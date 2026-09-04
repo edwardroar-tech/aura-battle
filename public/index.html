@@ -1,0 +1,800 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AURA BATTLE</title>
+
+<style>
+body{
+  margin:0;
+  font-family:Arial,sans-serif;
+  background:#090b14;
+  color:#fff;
+  text-align:center
+}
+
+.wrap{
+  max-width:900px;
+  margin:auto;
+  padding:20px
+}
+
+h1{
+  font-size:42px;
+  margin:10px 0
+}
+
+button,input{
+  font-size:18px;
+  padding:12px 16px;
+  border-radius:10px;
+  border:0;
+  margin:6px
+}
+
+button{
+  cursor:pointer;
+  font-weight:bold
+}
+
+input{
+  width:150px;
+  text-transform:uppercase
+}
+
+#status{
+  margin:15px 0;
+  color:#ddd
+}
+
+.videos{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px
+}
+
+.card{
+  background:#151927;
+  border-radius:16px;
+  padding:12px
+}
+
+video{
+  width:100%;
+  background:#000;
+  border-radius:12px;
+  aspect-ratio:16/9;
+  object-fit:cover
+}
+
+.score{
+  font-size:30px;
+  font-weight:bold;
+  margin:10px
+}
+
+@media(max-width:700px){
+  .videos{
+    grid-template-columns:1fr
+  }
+
+  h1{
+    font-size:34px
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="wrap">
+
+<h1>⚡ AURA BATTLE ⚡</h1>
+
+<p>Crea una sala y comparte el código con tu rival.</p>
+
+<div>
+<button id="create">CREAR SALA</button>
+
+<input
+  id="room"
+  placeholder="CÓDIGO"
+  maxlength="6">
+
+<button id="join">UNIRME</button>
+</div>
+
+<div>
+
+<button id="cam">
+📷 ACTIVAR CÁMARA
+</button>
+
+<button id="battle" disabled>
+🔥 INICIAR BATALLA
+</button>
+
+</div>
+
+<h2 id="code"></h2>
+
+<div id="status">
+Listo.
+</div>
+
+<div class="videos">
+
+<div class="card">
+
+<h2>Jugador 1</h2>
+
+<video
+  id="local"
+  autoplay
+  playsinline
+  muted>
+</video>
+
+<div class="score" id="score1">
+Aura: 0
+</div>
+
+</div>
+
+<div class="card">
+
+<h2>Jugador 2</h2>
+
+<video
+  id="remote"
+  autoplay
+  playsinline>
+</video>
+
+<div class="score" id="score2">
+Aura: 0
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+
+<script>
+
+const ioClient = io();
+
+let pc = null;
+let stream = null;
+let roomCode = null;
+let isHost = false;
+
+let pendingOffer = null;
+let pendingCandidates = [];
+
+let battleStarted = false;
+
+const $ = id => document.getElementById(id);
+
+
+function status(text){
+
+  $("status").textContent = text;
+
+}
+
+
+function createPeer(){
+
+  if(pc) return pc;
+
+  pc = new RTCPeerConnection({
+
+    iceServers:[
+      {
+        urls:"stun:stun.l.google.com:19302"
+      },
+      {
+        urls:"stun:stun1.l.google.com:19302"
+      }
+    ]
+
+  });
+
+
+  /*
+   * IMPORTANTE:
+   * Si la cámara ya está activa,
+   * agregamos sus pistas al WebRTC.
+   */
+
+  if(stream){
+
+    stream.getTracks().forEach(track => {
+
+      pc.addTrack(track,stream);
+
+    });
+
+  }
+
+
+  pc.ontrack = event => {
+
+    if(event.streams && event.streams[0]){
+
+      $("remote").srcObject =
+        event.streams[0];
+
+      status(
+        "✅ ¡Cámara del rival conectada!"
+      );
+
+    }
+
+  };
+
+
+  pc.onicecandidate = event => {
+
+    if(event.candidate && roomCode){
+
+      ioClient.emit(
+        "signal",
+        {
+          candidate:event.candidate
+        }
+      );
+
+    }
+
+  };
+
+
+  pc.onconnectionstatechange = () => {
+
+    if(pc.connectionState === "connected"){
+
+      status(
+        "🟢 ¡Los dos jugadores están conectados!"
+      );
+
+      $("battle").disabled = false;
+
+    }
+
+    else if(pc.connectionState === "failed"){
+
+      status(
+        "❌ No se pudo conectar. Pulsa Activar cámara y vuelve a intentarlo."
+      );
+
+    }
+
+  };
+
+
+  return pc;
+
+}
+
+
+/*
+ * ACTIVAR CÁMARA
+ */
+
+async function activateCamera(){
+
+  try{
+
+    if(!stream){
+
+      stream =
+        await navigator.mediaDevices.getUserMedia({
+
+          video:{
+            facingMode:"user"
+          },
+
+          audio:false
+
+        });
+
+      $("local").srcObject = stream;
+
+    }
+
+
+    createPeer();
+
+
+    /*
+     * Si el PeerConnection ya existía
+     * antes de activar la cámara,
+     * agregamos ahora las pistas.
+     */
+
+    const senders = pc.getSenders();
+
+    stream.getTracks().forEach(track => {
+
+      if(
+        !senders.some(
+          sender =>
+          sender.track &&
+          sender.track.kind === track.kind
+        )
+      ){
+
+        pc.addTrack(track,stream);
+
+      }
+
+    });
+
+
+    status("📷 Cámara activa.");
+
+
+    /*
+     * Si recibimos una oferta antes de
+     * activar la cámara, la procesamos ahora.
+     */
+
+    if(pendingOffer){
+
+      const offer = pendingOffer;
+
+      pendingOffer = null;
+
+      await processOffer(offer);
+
+    }
+
+
+    /*
+     * El anfitrión crea la conexión
+     * solamente cuando ya tiene cámara.
+     */
+
+    if(isHost && roomCode){
+
+      await makeOffer();
+
+    }
+
+  }
+
+  catch(error){
+
+    console.error(error);
+
+    status(
+      "❌ No se pudo acceder a la cámara. Revisa el permiso del navegador."
+    );
+
+  }
+
+}
+
+
+/*
+ * CREAR OFERTA
+ */
+
+async function makeOffer(){
+
+  if(!pc || !stream) return;
+
+  const offer =
+    await pc.createOffer();
+
+  await pc.setLocalDescription(offer);
+
+  ioClient.emit(
+    "signal",
+    {
+      offer:pc.localDescription
+    }
+  );
+
+  status(
+    "🔄 Conectando con el rival..."
+  );
+
+}
+
+
+/*
+ * PROCESAR OFERTA DEL RIVAL
+ */
+
+async function processOffer(offer){
+
+  /*
+   * Si todavía no tenemos cámara,
+   * guardamos la oferta.
+   */
+
+  if(!stream){
+
+    pendingOffer = offer;
+
+    status(
+      "📷 Activa tu cámara para conectar con el rival."
+    );
+
+    return;
+
+  }
+
+
+  createPeer();
+
+
+  await pc.setRemoteDescription(offer);
+
+
+  /*
+   * Agregamos candidatos que llegaron
+   * antes que la oferta.
+   */
+
+  for(
+    const candidate
+    of pendingCandidates
+  ){
+
+    try{
+
+      await pc.addIceCandidate(candidate);
+
+    }
+
+    catch(error){}
+
+  }
+
+
+  pendingCandidates = [];
+
+
+  const answer =
+    await pc.createAnswer();
+
+  await pc.setLocalDescription(answer);
+
+
+  ioClient.emit(
+    "signal",
+    {
+      answer:pc.localDescription
+    }
+  );
+
+
+  status(
+    "🔄 Respondiendo al rival..."
+  );
+
+}
+
+
+/*
+ * CREAR SALA
+ */
+
+$("create").onclick = () => {
+
+  ioClient.emit(
+    "create",
+    code => {
+
+      roomCode = code;
+
+      isHost = true;
+
+      $("code").textContent =
+        "CÓDIGO: " + code;
+
+      status(
+        "Sala creada. Activa tu cámara y comparte el código."
+      );
+
+    }
+  );
+
+};
+
+
+/*
+ * UNIRSE A SALA
+ */
+
+$("join").onclick = () => {
+
+  const code =
+    $("room").value
+    .trim()
+    .toUpperCase();
+
+
+  if(!code){
+
+    status(
+      "Escribe el código de la sala."
+    );
+
+    return;
+
+  }
+
+
+  ioClient.emit(
+    "join",
+    code,
+    response => {
+
+      if(response.ok){
+
+        roomCode = code;
+
+        isHost = false;
+
+        status(
+          "✅ Entraste a la sala. Activa tu cámara."
+        );
+
+      }
+
+      else{
+
+        status(
+          "❌ " + response.error
+        );
+
+      }
+
+    }
+  );
+
+};
+
+
+/*
+ * BOTÓN CÁMARA
+ */
+
+$("cam").onclick =
+  activateCamera;
+
+
+/*
+ * CUANDO LLEGA EL RIVAL
+ */
+
+ioClient.on(
+  "peer-joined",
+  () => {
+
+    status(
+      "👤 ¡Rival conectado! Activa tu cámara."
+    );
+
+
+    if(isHost && stream){
+
+      makeOffer();
+
+    }
+
+  }
+);
+
+
+/*
+ * SEÑALES WEBRTC
+ */
+
+ioClient.on(
+  "signal",
+  async message => {
+
+    try{
+
+      /*
+       * Oferta recibida
+       */
+
+      if(message.offer){
+
+        await processOffer(
+          message.offer
+        );
+
+      }
+
+
+      /*
+       * Respuesta recibida
+       */
+
+      if(message.answer && pc){
+
+        await pc.setRemoteDescription(
+          message.answer
+        );
+
+
+        for(
+          const candidate
+          of pendingCandidates
+        ){
+
+          try{
+
+            await pc.addIceCandidate(
+              candidate
+            );
+
+          }
+
+          catch(error){}
+
+        }
+
+
+        pendingCandidates = [];
+
+      }
+
+
+      /*
+       * Candidato ICE recibido
+       */
+
+      if(message.candidate){
+
+        if(
+          pc &&
+          pc.remoteDescription
+        ){
+
+          try{
+
+            await pc.addIceCandidate(
+              message.candidate
+            );
+
+          }
+
+          catch(error){}
+
+        }
+
+        else{
+
+          pendingCandidates.push(
+            message.candidate
+          );
+
+        }
+
+      }
+
+    }
+
+    catch(error){
+
+      console.error(
+        "Error de señal:",
+        error
+      );
+
+    }
+
+  }
+);
+
+
+/*
+ * BATALLA DE AURA
+ */
+
+$("battle").onclick = () => {
+
+  if(battleStarted) return;
+
+  battleStarted = true;
+
+  status(
+    "🔥 ¡BATALLA DE AURA!"
+  );
+
+
+  let number = 0;
+
+
+  const timer =
+    setInterval(() => {
+
+      number++;
+
+
+      $("score1").textContent =
+        "Aura: " +
+        Math.floor(
+          Math.random()*101
+        );
+
+
+      $("score2").textContent =
+        "Aura: " +
+        Math.floor(
+          Math.random()*101
+        );
+
+
+      if(number >= 10){
+
+        clearInterval(timer);
+
+
+        const score1 =
+          Math.floor(
+            Math.random()*101
+          );
+
+
+        const score2 =
+          Math.floor(
+            Math.random()*101
+          );
+
+
+        $("score1").textContent =
+          "Aura: " + score1;
+
+
+        $("score2").textContent =
+          "Aura: " + score2;
+
+
+        if(score1 > score2){
+
+          status(
+            "🏆 ¡Jugador 1 gana!"
+          );
+
+        }
+
+        else if(score2 > score1){
+
+          status(
+            "🏆 ¡Jugador 2 gana!"
+          );
+
+        }
+
+        else{
+
+          status(
+            "🤝 ¡Empate!"
+          );
+
+        }
+
+      }
+
+    },1000);
+
+};
+
+</script>
+
+</body>
+</html>
