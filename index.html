@@ -1,0 +1,881 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AURA BATTLE</title>
+<style>
+*{box-sizing:border-box}
+:root{
+  --bg:#08111d;
+  --panel:#0d1a29;
+  --panel2:#102238;
+  --line:#29445d;
+  --text:#f5f7fb;
+  --muted:#aebdcb;
+  --blue:#16a8ff;
+  --blue2:#006cff;
+  --red:#ff2538;
+  --gold:#ffc83d;
+  --green:#25e58a;
+}
+html,body{margin:0;min-height:100%;background:
+ radial-gradient(circle at 15% 0%,rgba(0,150,255,.16),transparent 30%),
+ radial-gradient(circle at 90% 35%,rgba(255,30,50,.13),transparent 30%),
+ var(--bg);color:var(--text);font-family:"Trebuchet MS",Arial,sans-serif}
+body{padding-bottom:74px}
+.wrap{width:100%;max-width:1180px;margin:auto;padding:14px 14px 30px}
+h1,h2,h3,.menu-title,.tab-btn,.battle-btn,.score,.profile-stat b{
+ font-family:"Impact","Arial Black",sans-serif;
+ font-style:italic;text-transform:uppercase;letter-spacing:1px
+}
+h1{font-size:32px;margin:8px 0 16px;text-shadow:0 0 16px rgba(22,168,255,.25)}
+h2{font-size:24px;margin:8px 0 12px}
+h3{font-size:18px}
+p{color:var(--muted);line-height:1.45}
+button,input{font:inherit}
+button{cursor:pointer;font-weight:900}
+button,input{
+ border-radius:10px;border:1px solid #40546a;padding:12px 14px
+}
+button{
+ color:#07101a;background:linear-gradient(135deg,#f8fbff,#bfcddd);
+ box-shadow:0 5px 16px rgba(0,0,0,.2)
+}
+input{background:#081321;color:#fff;width:100%;outline:none}
+input::placeholder{color:#718396}
+.small{font-size:12px;color:#8ea0b1}
+#auth{
+ background:linear-gradient(145deg,#111d2d,#0a1421);
+ border:1px solid #2c455d;border-radius:18px;padding:18px;margin:12px 0;
+ box-shadow:0 15px 40px rgba(0,0,0,.3)
+}
+#auth input{display:block;margin:9px auto;width:min(360px,100%)}
+.auth-choice button{min-width:200px;margin:6px}
+.auth-back{background:#263548;color:#fff}
+.auth-menu{display:none}
+.password-check{min-height:24px;font-weight:bold;margin:4px 0 10px}
+.password-wrap{position:relative;width:min(360px,100%);margin:9px auto}
+.password-wrap input{padding-right:50px!important;margin:0!important}
+.eye-btn{position:absolute;right:4px;top:50%;transform:translateY(-50%);padding:7px 10px!important;background:transparent!important;color:#fff!important;border:0!important;box-shadow:none}
+#userBox{display:none}
+#userEmail{font-weight:bold}
+#app{display:none}
+
+#mainNav{
+ display:none;position:fixed;z-index:100;left:0;right:0;bottom:0;
+ background:rgba(5,12,21,.96);backdrop-filter:blur(16px);
+ border-top:1px solid #29445d;padding:7px 6px env(safe-area-inset-bottom);
+ box-shadow:0 -12px 30px rgba(0,0,0,.4)
+}
+.tab-row{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
+.tab-btn{
+ width:100%;min-width:0;background:transparent!important;color:#8195a9!important;
+ border:0!important;border-radius:10px!important;padding:8px 3px!important;
+ font-size:10px!important;font-style:normal;box-shadow:none!important
+}
+.tab-btn::first-letter{font-size:16px}
+.tab-btn.active{color:#fff!important;background:linear-gradient(180deg,rgba(0,130,255,.25),rgba(255,30,50,.12))!important}
+.tab-btn.active:after{content:"";display:block;height:3px;border-radius:4px;background:linear-gradient(90deg,var(--blue),var(--red));margin:5px 12px 0}
+.tab-section{display:none}
+.tab-section.active{display:block}
+.menu-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+.menu-title{font-size:22px}
+.card-modern,.card,#profileCard,#socialCard{
+ background:linear-gradient(145deg,rgba(18,35,54,.98),rgba(8,19,32,.98));
+ border:1px solid #29445d;border-radius:14px;padding:16px;margin:12px 0;
+ box-shadow:0 12px 30px rgba(0,0,0,.25)
+}
+.settings-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 0;border-bottom:1px solid #22384d}
+.settings-row:last-child{border-bottom:0}
+.settings-label{font-weight:800}.settings-help{font-size:12px;color:#91a5b7;margin-top:3px}
+.settings-action{min-width:100px}.legal{font-size:12px;color:#8ea0b1;line-height:1.5}
+
+.hero{
+ position:relative;overflow:hidden;min-height:350px;border:1px solid #31506b;border-radius:18px;
+ padding:24px 18px;margin:12px 0;
+ background:
+ radial-gradient(circle at 18% 55%,rgba(0,157,255,.48),transparent 32%),
+ radial-gradient(circle at 82% 48%,rgba(255,27,45,.42),transparent 32%),
+ linear-gradient(135deg,#0c2740,#0b1524 52%,#2a111b)
+}
+.hero:before,.hero:after{content:"";position:absolute;border-radius:50%;filter:blur(2px);opacity:.7}
+.hero:before{width:210px;height:210px;left:-80px;top:90px;background:radial-gradient(circle,rgba(0,174,255,.75),transparent 65%)}
+.hero:after{width:210px;height:210px;right:-80px;top:90px;background:radial-gradient(circle,rgba(255,35,55,.75),transparent 65%)}
+.hero-content{position:relative;z-index:2;text-align:center}
+.hero-logo{font-size:54px;line-height:.82;margin:18px 0 10px;color:#fff;text-shadow:3px 4px 0 #1c2d3e,0 0 20px rgba(0,170,255,.4)}
+.hero-logo span{display:block;color:#ff3348;font-size:40px}
+.hero-tag{font-size:12px;letter-spacing:4px;color:#d8e4ef}
+.battle-btn{margin:20px auto 12px;display:block;background:linear-gradient(135deg,#ff3649,#b40020);color:#fff;border:1px solid #ff6c78;border-radius:12px;padding:15px 26px;font-size:17px;box-shadow:0 0 24px rgba(255,35,55,.3)}
+.feature-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.feature-card{background:rgba(5,17,29,.78);border:1px solid #31536d;border-radius:12px;padding:14px;text-align:center}
+.feature-card .ico{font-size:26px}.feature-card strong{display:block;font-family:"Impact","Arial Black";font-style:italic;margin:5px 0}
+.feature-card small{color:#aab9c7}
+.aura-panel{background:linear-gradient(145deg,#0b2035,#10152a);border:1px solid #31536d;border-radius:15px;padding:16px}
+.aura-ring{width:150px;height:150px;margin:8px auto;border-radius:50%;display:grid;place-items:center;
+ background:radial-gradient(circle,#07111d 48%,transparent 50%),conic-gradient(var(--blue),#8b2cff,var(--red),var(--blue));
+ box-shadow:0 0 35px rgba(0,160,255,.32),0 0 45px rgba(255,30,50,.2)}
+.aura-number{font:italic 48px Impact,"Arial Black";text-shadow:0 0 12px rgba(255,255,255,.25)}
+.profile-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}
+.profile-stat{background:#081321;border:1px solid #243b50;border-radius:12px;padding:12px}
+.profile-stat b{display:block;font-size:25px;margin-top:5px}
+.player-result{background:#081321;border:1px solid #263f55;border-radius:12px;padding:12px;margin:8px 0;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.player-result button{font-size:13px;padding:9px 11px}
+#searchResults{text-align:left}.social-msg{min-height:24px;margin-top:8px}
+
+.battle-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.battle-toolbar input{flex:1;min-width:120px}
+.videos{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.aura-box{position:relative;border-radius:14px;padding:5px;--aura:0;transition:.25s}
+.aura-box:before{content:"";position:absolute;inset:-4px;border-radius:18px;background:radial-gradient(circle,rgba(80,80,255,.65),rgba(0,220,255,.2) 45%,transparent 72%);opacity:calc(.15 + var(--aura)*.75);filter:blur(calc(4px + var(--aura)*12px));transform:scale(calc(1 + var(--aura)*.08));animation:auraPulse 1.1s infinite alternate;pointer-events:none}
+.aura-box video{position:relative;z-index:1}
+video{width:100%;background:#000;border-radius:10px;aspect-ratio:16/9;object-fit:cover}
+.score{font-size:27px;margin:10px}.bar{height:12px;background:#07101a;border:1px solid #274057;border-radius:20px;overflow:hidden}
+.fill{height:100%;width:0;background:linear-gradient(90deg,var(--blue),#9c39ff,var(--red));transition:.2s}
+@keyframes auraPulse{from{transform:scale(1)}to{transform:scale(1.05)}}
+#status{margin:12px 0;color:#b9c7d4}
+.quick-panel{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+.quick-card{padding:14px;border:1px solid #29445d;border-radius:12px;background:#0b1826}
+.quick-card strong{display:block;font-family:"Impact";font-style:italic;font-size:17px}
+.badge{display:inline-block;padding:5px 9px;border-radius:99px;background:#0d2d47;color:#65c6ff;font-size:11px;font-weight:900}
+.rank-list .rank-row{display:flex;align-items:center;gap:10px;padding:12px;border-bottom:1px solid #22384d}
+.rank-row .pos{width:30px;font:italic 22px Impact}.rank-row .avatar{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle,#1d74ff,#111b2a)}
+.league-banner{background:linear-gradient(135deg,#172d48,#24172f);border:1px solid #405b73;border-radius:15px;padding:22px;text-align:center}
+.league-shield{font-size:62px;text-shadow:0 0 25px rgba(0,170,255,.35)}
+.bottom-note{text-align:center;color:#75899b;font-size:11px;margin:20px 0 5px}
+
+@media(min-width:800px){
+ body{padding-bottom:0}
+ .wrap{padding:20px 24px 40px;margin-left:215px;max-width:calc(1180px - 215px)}
+ #mainNav{display:block;left:12px;right:auto;top:12px;bottom:12px;width:190px;border:1px solid #29445d;border-radius:16px;padding:12px}
+ .tab-row{display:flex;flex-direction:column;gap:7px;height:100%;overflow:auto}
+ .tab-btn{text-align:left;font-size:13px!important;padding:12px!important}
+ .tab-btn.active:after{margin:5px 0 0;width:45px}
+}
+@media(max-width:600px){
+ .feature-grid{grid-template-columns:1fr 1fr 1fr;gap:7px}
+ .feature-card{padding:10px 5px}.feature-card small{font-size:10px}
+ .hero{min-height:330px}.hero-logo{font-size:45px}.hero-logo span{font-size:34px}
+ .videos{grid-template-columns:1fr}
+ .profile-grid{grid-template-columns:1fr 1fr 1fr}
+ .profile-stat{padding:9px;font-size:13px}.profile-stat b{font-size:22px}
+ .quick-panel{grid-template-columns:1fr 1fr}
+}
+@media(max-width:380px){
+ .tab-btn{font-size:9px!important}
+ .hero-logo{font-size:39px}.hero-logo span{font-size:30px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>⚡ AURA BATTLE ⚡</h1>
+
+<section id="auth">
+  <h2>👤 Cuenta</h2>
+
+  <div id="authChoice" class="auth-choice">
+    <p>¿Qué deseas hacer?</p>
+    <button id="showLogin">🔐 INICIAR SESIÓN</button>
+    <button id="showRegister">📝 CREAR CUENTA</button>
+  </div>
+
+  <div id="loginForm" class="auth-menu">
+    <h3>🔐 Iniciar sesión</h3>
+    <input id="loginEmail" type="email" placeholder="Correo electrónico" autocomplete="email">
+    <div class="password-wrap"><input id="loginPassword" type="password" placeholder="Contraseña" autocomplete="current-password"><button type="button" class="eye-btn" id="eyeLogin" aria-label="Mostrar contraseña">👁️</button></div>
+    <button id="login">🔐 INICIAR SESIÓN</button>
+    <button id="backLogin" class="auth-back">← Volver</button>
+  </div>
+
+  <div id="registerForm" class="auth-menu">
+    <h3>📝 Crear cuenta</h3>
+    <input id="registerName" type="text" placeholder="Nombre de jugador" autocomplete="name">
+    <input id="registerEmail" type="email" placeholder="Correo electrónico" autocomplete="email">
+    <div class="password-wrap"><input id="registerPassword" type="password" placeholder="Contraseña (mínimo 6 caracteres)" autocomplete="new-password"><button type="button" class="eye-btn" id="eyeRegister" aria-label="Mostrar contraseña">👁️</button></div>
+    <div class="password-wrap"><input id="registerPassword2" type="password" placeholder="Repite la contraseña" autocomplete="new-password"><button type="button" class="eye-btn" id="eyeRegister2" aria-label="Mostrar contraseña">👁️</button></div>
+    <div id="passwordCheck" class="password-check"></div>
+    <button id="register">📝 CREAR CUENTA</button>
+    <button id="backRegister" class="auth-back">← Volver</button>
+  </div>
+
+  <div id="userBox">
+    <div>Conectado como <span id="userEmail"></span></div>
+    <button id="logout">Cerrar sesión</button>
+  </div>
+  <div id="authStatus"></div>
+  <div class="small">Tu cuenta se guarda de forma segura en Firebase Authentication.</div>
+</section>
+
+<nav id="mainNav">
+  <div class="tab-row">
+    <button class="tab-btn active" data-tab="home">🏠 Inicio</button>
+    <button class="tab-btn" data-tab="profileCard">👤 Perfil</button>
+    <button class="tab-btn" data-tab="socialCard">👥 Amigos</button>
+    <button class="tab-btn" data-tab="chatCard">💬 Chat</button>
+    <button class="tab-btn" data-tab="battleSection">⚡ Batallas</button>
+    <button class="tab-btn" data-tab="rankingCard">🏆 Ranking</button>
+    <button class="tab-btn" data-tab="leagueCard">🥇 Liga</button>
+    <button class="tab-btn" data-tab="settingsCard">⚙️ Ajustes</button>
+  </div>
+</nav>
+
+<section id="home" class="tab-section active">
+  <div class="hero">
+    <div class="hero-content">
+      <div class="hero-tag">OBSERVA · ENFRENTA · EVOLUCIONA</div>
+      <div class="hero-logo">AURA<span>BATTLE</span></div>
+      <div class="hero-tag">TU AURA DEFINE TU DESTINO</div>
+      <button class="battle-btn" onclick="showTab('battleSection')">⚔️ INICIAR BATALLA</button>
+      <div class="feature-grid">
+        <div class="feature-card"><div class="ico">📷</div><strong>USA TU CÁMARA</strong><small>Analiza tu aura</small></div>
+        <div class="feature-card"><div class="ico">⚡</div><strong>ENTRENA</strong><small>Mejora tu energía</small></div>
+        <div class="feature-card"><div class="ico">🏆</div><strong>COMPITE</strong><small>Demuestra tu poder</small></div>
+      </div>
+    </div>
+  </div>
+  <div class="quick-panel">
+    <div class="quick-card"><span class="badge">AURA</span><strong>EVOLUCIONA TU PODER</strong><small>Sube tu nivel con cada batalla.</small></div>
+    <div class="quick-card"><span class="badge">GLOBAL</span><strong>COMUNIDAD GLOBAL</strong><small>Conoce jugadores de todo el mundo.</small></div>
+  </div>
+</section>
+
+<section id="profileCard" class="tab-section">
+  <div class="menu-header"><div class="menu-title">👤 Mi perfil</div></div>
+  <div id="profileName">Cargando perfil...</div>
+  <div class="profile-grid">
+    <div class="profile-stat">⚡ Aura<b id="profileAura">0</b></div>
+    <div class="profile-stat">🏆 Victorias<b id="profileWins">0</b></div>
+    <div class="profile-stat">❌ Derrotas<b id="profileLosses">0</b></div>
+  </div>
+  <button id="refreshProfile">🔄 ACTUALIZAR PERFIL</button>
+</section>
+
+<section id="socialCard" class="tab-section">
+  <h2>👥 Jugadores</h2>
+  <p>Busca a otros jugadores por su nombre.</p>
+  <input id="playerSearch" type="text" placeholder="Nombre del jugador">
+  <button id="searchPlayers">🔎 BUSCAR</button>
+  <div id="socialMsg" class="social-msg"></div>
+  <div id="searchResults"></div>
+  <h3>🤝 Solicitudes recibidas</h3>
+  <div id="friendRequests"></div>
+</section>
+
+<section id="chatCard" class="tab-section">
+  <div class="menu-header"><div class="menu-title">💬 Chat</div><span class="badge">MENSAJES</span></div>
+  <div class="card-modern">
+    <h3>Conversaciones</h3>
+    <p>Tu chat privado con otros jugadores aparecerá aquí.</p>
+    <div class="quick-card">👤 ShadowX <small>— Próximamente podrás enviar mensajes.</small></div>
+    <div class="quick-card">👤 LunaVox <small>— Invita a un amigo a tu próxima batalla.</small></div>
+  </div>
+</section>
+
+<section id="battleSection" class="tab-section">
+  <div class="menu-header"><div class="menu-title">⚔️ Batallas</div><span class="badge">ARENA ONLINE</span></div>
+  <div class="hero" style="min-height:240px">
+    <div class="hero-content">
+      <div class="hero-logo" style="font-size:40px">ENFRENTA<span style="font-size:31px">TU AURA</span></div>
+      <p>Desafía a otro jugador y demuestra tu poder.</p>
+    </div>
+  </div>
+  <div class="card-modern">
+    <h3>🎮 Sala de batalla</h3>
+    <p>Crea una sala y comparte el código con tu rival.</p>
+    <div class="battle-toolbar">
+      <button id="create">CREAR SALA</button>
+      <input id="room" placeholder="CÓDIGO" maxlength="6">
+      <button id="join">UNIRME</button>
+    </div>
+    <div style="margin-top:8px">
+      <button id="cam">📷 ACTIVAR CÁMARA</button>
+      <button id="battle" disabled class="battle-btn">⚔️ INICIAR BATALLA</button>
+    </div>
+    <h2 id="code"></h2><div id="status">Listo.</div>
+  </div>
+  <div class="videos">
+    <div class="card">
+      <h2>Jugador 1</h2>
+      <div class="aura-box" id="box1"><video id="local" autoplay playsinline muted></video></div>
+      <div class="score" id="score1">Aura: 0</div><div class="bar"><div class="fill" id="fill1"></div></div>
+    </div>
+    <div class="card">
+      <h2>Jugador 2</h2>
+      <div class="aura-box" id="box2"><video id="remote" autoplay playsinline></video></div>
+      <div class="score" id="score2">Aura: 0</div><div class="bar"><div class="fill" id="fill2"></div></div>
+    </div>
+  </div>
+</section>
+
+<section id="rankingCard" class="tab-section">
+  <div class="menu-header"><div class="menu-title">🏆 Ranking</div><span class="badge">GLOBAL</span></div>
+  <div class="card-modern rank-list">
+    <div class="rank-row"><div class="pos">1</div><div class="avatar">🔥</div><div><b>ShadowX</b><br><small>2.950 Aura</small></div></div>
+    <div class="rank-row"><div class="pos">2</div><div class="avatar">💜</div><div><b>LunaVox</b><br><small>2.480 Aura</small></div></div>
+    <div class="rank-row"><div class="pos">3</div><div class="avatar">⚡</div><div><b>Kairo</b><br><small>2.310 Aura</small></div></div>
+    <div class="rank-row"><div class="pos">7</div><div class="avatar">🔵</div><div><b>EDWARD</b><br><small>1.760 Aura</small></div></div>
+  </div>
+</section>
+
+<section id="leagueCard" class="tab-section">
+  <div class="menu-header"><div class="menu-title">🥇 Liga</div><span class="badge">TEMPORADA 1</span></div>
+  <div class="league-banner">
+    <div class="league-shield">🛡️</div>
+    <h2>LIGA VALDORIA</h2>
+    <p>Tu progreso competitivo</p>
+    <h3>PLATINO II</h3>
+    <div class="bar"><div class="fill" style="width:62%"></div></div>
+    <p>1.250 / 1.500 puntos</p>
+  </div>
+  <div class="card-modern"><b>🎁 Recompensas</b><p>Sube de rango para desbloquear recompensas.</p></div>
+</section>
+
+<section id="settingsCard" class="tab-section">
+  <div class="menu-header">
+    <div class="menu-title">⚙️ Ajustes</div>
+  </div>
+
+  <div class="card-modern">
+    <h3>👤 Cuenta</h3>
+
+    <div class="settings-row">
+      <div>
+        <div class="settings-label">Nombre para mostrar</div>
+        <div class="settings-help">El nombre que verán otros jugadores.</div>
+      </div>
+      <button class="settings-action" id="changeNameBtn">Cambiar</button>
+    </div>
+
+    <div class="settings-row">
+      <div>
+        <div class="settings-label">📧 Correo electrónico</div>
+        <div class="settings-help">Actualiza el correo asociado a tu cuenta.</div>
+      </div>
+      <button class="settings-action" id="changeEmailBtn">Cambiar</button>
+    </div>
+
+    <div class="settings-row">
+      <div>
+        <div class="settings-label">🔑 Contraseña</div>
+        <div class="settings-help">Cambia tu contraseña de acceso.</div>
+      </div>
+      <button class="settings-action" id="changePasswordBtn">Cambiar</button>
+    </div>
+  </div>
+
+  <div class="card-modern">
+    <h3>🛡️ Seguridad</h3>
+    <p class="settings-help">Para cambios sensibles, Firebase puede solicitar que vuelvas a autenticarte.</p>
+    <button id="logoutSettings">Cerrar sesión</button>
+  </div>
+
+  <div class="card-modern">
+    <h3>©️ AURA BATTLE</h3>
+    <p class="legal">© 2026 AURA BATTLE — Todos los derechos reservados.<br>
+    El nombre, diseño, concepto y contenido original de AURA BATTLE pertenecen a sus respectivos titulares.</p>
+  </div>
+</section>
+
+<section id="app" class="tab-section">
+<p>Crea una sala y comparte el código con tu rival.</p>
+<div><button id="create">CREAR SALA</button><input id="room" placeholder="CÓDIGO" maxlength="6"><button id="join">UNIRME</button></div>
+<div><button id="cam">📷 ACTIVAR CÁMARA</button><button id="battle" disabled>🔥 INICIAR BATALLA</button></div>
+<h2 id="code"></h2><div id="status">Listo.</div>
+<div class="videos">
+<div class="card"><h2>Jugador 1</h2><div class="aura-box" id="box1"><video id="local" autoplay playsinline muted></video></div><div class="score" id="score1">Aura: 0</div><div class="bar"><div class="fill" id="fill1"></div></div></div>
+<div class="card"><h2>Jugador 2</h2><div class="aura-box" id="box2"><video id="remote" autoplay playsinline></video></div><div class="score" id="score2">Aura: 0</div><div class="bar"><div class="fill" id="fill2"></div></div></div>
+</div>
+</section>
+<div class="bottom-note">© 2026 AURA BATTLE — Todos los derechos reservados.</div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyCNlwur7gY1PKSZClhIye7ti8ZR2KC8EDQ",
+  authDomain: "aura-battle-3ced4.firebaseapp.com",
+  projectId: "aura-battle-3ced4",
+  storageBucket: "aura-battle-3ced4.firebasestorage.app",
+  messagingSenderId: "531143198131",
+  appId: "1:531143198131:web:228f30c2f8f8e6ea6db7c6",
+  measurementId: "G-MV25F2ZDZT"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+const $=id=>document.getElementById(id);
+function authStatus(t){$("authStatus").textContent=t}
+
+async function updateDisplayName(){
+  const user=auth.currentUser;
+  if(!user)return;
+  const current=user.displayName||"";
+  const name=prompt("Nuevo nombre para mostrar:",current);
+  if(name===null)return;
+  const clean=name.trim();
+  if(clean.length<2){alert("El nombre debe tener al menos 2 caracteres.");return}
+  try{
+    await user.updateProfile({displayName:clean});
+    await db.collection("users").doc(user.uid).update({nombre:clean});
+    await db.collection("publicProfiles").doc(user.uid).set({
+      nombre:clean,nombreLower:clean.toLowerCase(),uid:user.uid
+    },{merge:true});
+    $("userEmail").textContent=clean+" ("+user.email+")";
+    $("profileName").textContent=clean;
+    alert("✅ Nombre actualizado.");
+  }catch(e){
+    console.error(e);
+    alert("❌ No se pudo actualizar el nombre. Puede requerir volver a iniciar sesión.");
+  }
+}
+
+async function updateEmailAddress(){
+  const user=auth.currentUser;
+  if(!user)return;
+  const email=prompt("Nuevo correo electrónico:",user.email||"");
+  if(email===null)return;
+  const clean=email.trim();
+  if(!clean || !clean.includes("@")){alert("Escribe un correo válido.");return}
+  try{
+    await user.updateEmail(clean);
+    await db.collection("users").doc(user.uid).update({email:clean});
+    $("userEmail").textContent=(user.displayName||"Jugador")+" ("+clean+")";
+    alert("✅ Correo actualizado.");
+  }catch(e){
+    console.error(e);
+    if(e.code==="auth/requires-recent-login"){
+      alert("🔐 Por seguridad, cierra sesión y vuelve a iniciar sesión antes de cambiar el correo.");
+    }else{
+      alert("❌ No se pudo actualizar el correo.");
+    }
+  }
+}
+
+async function updatePasswordValue(){
+  const user=auth.currentUser;
+  if(!user)return;
+  const p1=prompt("Nueva contraseña (mínimo 6 caracteres):");
+  if(p1===null)return;
+  const p2=prompt("Repite la nueva contraseña:");
+  if(p2===null)return;
+  if(p1.length<6){alert("La contraseña debe tener al menos 6 caracteres.");return}
+  if(p1!==p2){alert("❌ Las contraseñas no coinciden.");return}
+  try{
+    await user.updatePassword(p1);
+    alert("✅ Contraseña actualizada.");
+  }catch(e){
+    console.error(e);
+    if(e.code==="auth/requires-recent-login"){
+      alert("🔐 Por seguridad, cierra sesión y vuelve a iniciar sesión antes de cambiar la contraseña.");
+    }else{
+      alert("❌ No se pudo actualizar la contraseña.");
+    }
+  }
+}
+
+$("changeNameBtn").onclick=updateDisplayName;
+$("changeEmailBtn").onclick=updateEmailAddress;
+$("changePasswordBtn").onclick=updatePasswordValue;
+$("logoutSettings").onclick=()=>auth.signOut();
+
+function showAuthMenu(which){
+  $("authChoice").style.display="none";
+  $("loginForm").style.display=which==="login"?"block":"none";
+  $("registerForm").style.display=which==="register"?"block":"none";
+  authStatus("");
+}
+
+function backToAuthChoice(){
+  $("loginForm").style.display="none";
+  $("registerForm").style.display="none";
+  $("authChoice").style.display="block";
+  authStatus("");
+}
+
+$("showLogin").onclick=()=>showAuthMenu("login");
+$("showRegister").onclick=()=>showAuthMenu("register");
+$("backLogin").onclick=backToAuthChoice;
+$("backRegister").onclick=backToAuthChoice;
+
+function togglePassword(inputId,buttonId){
+  const input=$(inputId), button=$(buttonId);
+  if(input.type==="password"){
+    input.type="text";
+    button.textContent="🙈";
+    button.setAttribute("aria-label","Ocultar contraseña");
+  }else{
+    input.type="password";
+    button.textContent="👁️";
+    button.setAttribute("aria-label","Mostrar contraseña");
+  }
+}
+$("eyeLogin").onclick=()=>togglePassword("loginPassword","eyeLogin");
+$("eyeRegister").onclick=()=>togglePassword("registerPassword","eyeRegister");
+$("eyeRegister2").onclick=()=>togglePassword("registerPassword2","eyeRegister2");
+
+$("registerPassword2").addEventListener("input",checkPasswords);
+$("registerPassword").addEventListener("input",checkPasswords);
+
+function checkPasswords(){
+  const p1=$("registerPassword").value;
+  const p2=$("registerPassword2").value;
+  if(!p2){$("passwordCheck").textContent="";return false}
+  if(p1===p2){
+    $("passwordCheck").textContent="✅ Las contraseñas coinciden";
+    return true;
+  }
+  $("passwordCheck").textContent="❌ Las contraseñas no coinciden";
+  return false;
+}
+
+$("register").onclick=async()=>{
+  const email=$("registerEmail").value.trim();
+  const password=$("registerPassword").value;
+  const password2=$("registerPassword2").value;
+  const name=$("registerName").value.trim();
+  if(!name){authStatus("Escribe tu nombre de jugador.");return}
+  if(!email||!password){authStatus("Escribe tu correo y contraseña.");return}
+  if(password.length<6){authStatus("La contraseña debe tener al menos 6 caracteres.");return}
+  if(password!==password2){
+    checkPasswords();
+    authStatus("❌ Las contraseñas no coinciden.");
+    return;
+  }
+  try{
+    const cred=await auth.createUserWithEmailAndPassword(email,password);
+    await cred.user.updateProfile({displayName:name});
+    await db.collection("users").doc(cred.user.uid).set({
+      nombre:name,
+      email:email,
+      uid:cred.user.uid,
+      victorias:0,
+      derrotas:0,
+      aura:0,
+      creadoEn:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    await db.collection("publicProfiles").doc(cred.user.uid).set({
+      nombre:name,
+      nombreLower:name.toLowerCase(),
+      uid:cred.user.uid,
+      aura:0,
+      victorias:0
+    });
+    authStatus("✅ Cuenta y perfil creados correctamente.");
+  }catch(e){
+    console.error(e);
+    authStatus("❌ "+friendlyAuthError(e));
+  }
+};
+
+$("login").onclick=async()=>{
+  const email=$("loginEmail").value.trim();
+  const password=$("loginPassword").value;
+  if(!email||!password){authStatus("Escribe tu correo y contraseña.");return}
+  try{
+    await auth.signInWithEmailAndPassword(email,password);
+    authStatus("✅ Sesión iniciada.");
+  }catch(e){
+    console.error(e);
+    authStatus("❌ "+friendlyAuthError(e));
+  }
+};
+
+$("logout").onclick=async()=>{
+  await auth.signOut();
+  $("loginEmail").value="";
+  $("loginPassword").value="";
+  $("registerName").value="";
+  $("registerEmail").value="";
+  $("registerPassword").value="";
+  $("registerPassword2").value="";
+  $("loginPassword").type="password";
+  $("registerPassword").type="password";
+  $("registerPassword2").type="password";
+  $("eyeLogin").textContent="👁️";
+  $("eyeRegister").textContent="👁️";
+  $("eyeRegister2").textContent="👁️";
+  $("passwordCheck").textContent="";
+  $("authStatus").textContent="";
+  backToAuthChoice();
+};
+
+function friendlyAuthError(e){
+  const code=e&&e.code||"";
+  if(code.includes("email-already-in-use"))return"Este correo ya tiene una cuenta.";
+  if(code.includes("invalid-email"))return"El correo no es válido.";
+  if(code.includes("weak-password"))return"La contraseña es demasiado débil.";
+  if(code.includes("invalid-credential")||code.includes("wrong-password")||code.includes("user-not-found"))return"Correo o contraseña incorrectos.";
+  if(code.includes("too-many-requests"))return"Demasiados intentos. Espera un momento y vuelve a probar.";
+  if(code.includes("operation-not-allowed"))return"El acceso por correo y contraseña no está habilitado en Firebase.";
+  return"Ha ocurrido un error. Revisa los datos e inténtalo de nuevo.";
+}
+
+async function loadProfile(user){
+  try{
+    const snap=await db.collection("users").doc(user.uid).get();
+    if(snap.exists){
+      const d=snap.data();
+      $("profileName").textContent=d.nombre||user.displayName||"Jugador";
+      $("profileAura").textContent=d.aura??0;
+      $("profileWins").textContent=d.victorias??0;
+      $("profileLosses").textContent=d.derrotas??0;
+    }else{
+      $("profileName").textContent=user.displayName||"Jugador";
+      $("profileAura").textContent="0";
+      $("profileWins").textContent="0";
+      $("profileLosses").textContent="0";
+    }
+  }catch(e){
+    console.error("Perfil:",e);
+    $("profileName").textContent=user.displayName||"Jugador";
+    authStatus("⚠️ No se pudo leer el perfil de Firestore.");
+  }
+}
+$("refreshProfile").onclick=()=>{
+  const user=auth.currentUser;
+  if(user)loadProfile(user);
+    loadFriendRequests();
+};
+
+function showTab(tabId){
+  document.querySelectorAll(".tab-section").forEach(el=>el.classList.remove("active"));
+  document.querySelectorAll(".tab-btn").forEach(btn=>btn.classList.remove("active"));
+  const target=$(tabId);
+  const button=document.querySelector('.tab-btn[data-tab="'+tabId+'"]');
+  if(target)target.classList.add("active");
+  if(button)button.classList.add("active");
+  if(tabId==="profileCard"){
+    const user=auth.currentUser;
+    if(user)loadProfile(user);
+  }
+}
+document.querySelectorAll(".tab-btn").forEach(btn=>{
+  btn.onclick=()=>showTab(btn.dataset.tab);
+});
+
+async function searchPlayers(){
+  const user=auth.currentUser;
+  const term=$("playerSearch").value.trim().toLowerCase();
+  $("searchResults").innerHTML="";
+  if(!user){$("socialMsg").textContent="Inicia sesión para buscar jugadores.";return}
+  if(term.length<2){$("socialMsg").textContent="Escribe al menos 2 caracteres.";return}
+  $("socialMsg").textContent="Buscando...";
+  try{
+    const snap=await db.collection("publicProfiles")
+      .where("nombreLower","==",term)
+      .limit(10).get();
+    if(snap.empty){
+      $("socialMsg").textContent="No encontramos jugadores con ese nombre exacto.";
+      return;
+    }
+    $("socialMsg").textContent="";
+    snap.forEach(doc=>{
+      const d=doc.data();
+      if(doc.id===user.uid)return;
+      const row=document.createElement("div");
+      row.className="player-result";
+      row.innerHTML="<span>👤 <b>"+escapeHtml(d.nombre||"Jugador")+"</b></span>";
+      const btn=document.createElement("button");
+      btn.textContent="➕ AGREGAR";
+      btn.onclick=()=>sendFriendRequest(doc.id,d.nombre||"Jugador");
+      row.appendChild(btn);
+      $("searchResults").appendChild(row);
+    });
+  }catch(e){
+    console.error(e);
+    $("socialMsg").textContent="⚠️ No se pudo buscar. Revisa las reglas de Firestore.";
+  }
+}
+
+function escapeHtml(value){
+  return String(value).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+}
+
+async function sendFriendRequest(receiverUid,receiverName){
+  const user=auth.currentUser;
+  if(!user)return;
+  try{
+    const id=user.uid+"_"+receiverUid;
+    await db.collection("friendRequests").doc(id).set({
+      senderId:user.uid,
+      senderName:user.displayName||"Jugador",
+      receiverId:receiverUid,
+      receiverName:receiverName,
+      status:"pending",
+      createdEn:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    $("socialMsg").textContent="✅ Solicitud enviada a "+receiverName+".";
+  }catch(e){
+    console.error(e);
+    $("socialMsg").textContent="⚠️ No se pudo enviar la solicitud.";
+  }
+}
+
+async function loadFriendRequests(){
+  const user=auth.currentUser;
+  if(!user)return;
+  $("friendRequests").innerHTML="Cargando...";
+  try{
+    const snap=await db.collection("friendRequests")
+      .where("receiverId","==",user.uid)
+      .where("status","==","pending").limit(20).get();
+    $("friendRequests").innerHTML="";
+    if(snap.empty){
+      $("friendRequests").textContent="No tienes solicitudes nuevas.";
+      return;
+    }
+    snap.forEach(doc=>{
+      const d=doc.data();
+      const row=document.createElement("div");
+      row.className="player-result";
+      row.innerHTML="<span>👤 <b>"+escapeHtml(d.senderName||"Jugador")+"</b></span>";
+      const btn=document.createElement("button");
+      btn.textContent="✅ ACEPTAR";
+      btn.onclick=()=>acceptFriendRequest(doc.id,d.senderId,d.senderName||"Jugador");
+      row.appendChild(btn);
+      $("friendRequests").appendChild(row);
+    });
+  }catch(e){
+    console.error(e);
+    $("friendRequests").textContent="⚠️ No se pudieron cargar las solicitudes.";
+  }
+}
+
+async function acceptFriendRequest(requestId,senderId,senderName){
+  const user=auth.currentUser;
+  if(!user)return;
+  try{
+    const batch=db.batch();
+    batch.set(db.collection("users").doc(user.uid).collection("friends").doc(senderId),{
+      uid:senderId,nombre:senderName,addedEn:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    batch.set(db.collection("users").doc(senderId).collection("friends").doc(user.uid),{
+      uid:user.uid,nombre:user.displayName||"Jugador",addedEn:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    batch.update(db.collection("friendRequests").doc(requestId),{status:"accepted"});
+    await batch.commit();
+    $("socialMsg").textContent="🤝 Ahora son amigos.";
+    loadFriendRequests();
+  }catch(e){
+    console.error(e);
+    $("socialMsg").textContent="⚠️ No se pudo aceptar la solicitud.";
+  }
+}
+
+$("searchPlayers").onclick=searchPlayers;
+$("playerSearch").addEventListener("keydown",e=>{if(e.key==="Enter")searchPlayers()});
+
+auth.onAuthStateChanged(async user=>{
+  if(user){
+    $("authChoice").style.display="none";
+    $("mainNav").style.display="block";
+    showTab("home");
+    $("loginForm").style.display="none";
+    $("registerForm").style.display="none";
+    $("userBox").style.display="block";
+    $("userEmail").textContent=user.displayName ? user.displayName+" ("+user.email+")" : user.email;
+    $("profileCard").style.display="block";
+    loadProfile(user);
+
+    try{
+      const ref=db.collection("users").doc(user.uid);
+      const snap=await ref.get();
+      if(!snap.exists){
+        await ref.set({
+          nombre:user.displayName||"Jugador",
+          email:user.email||"",
+          uid:user.uid,
+          victorias:0,
+          derrotas:0,
+          aura:0,
+          creadoEn:firebase.firestore.FieldValue.serverTimestamp()
+        });
+        await db.collection("publicProfiles").doc(user.uid).set({
+          nombre:user.displayName||"Jugador",
+          nombreLower:(user.displayName||"Jugador").toLowerCase(),
+          uid:user.uid,
+          aura:0,
+          victorias:0
+        });
+      }
+    }catch(e){
+      console.error("Firestore:",e);
+      authStatus("⚠️ Cuenta iniciada, pero el perfil de Firestore aún no pudo guardarse. Revisa las reglas de Firestore.");
+    }
+  }else{
+    $("authChoice").style.display="block";
+    $("mainNav").style.display="none";
+    $("loginForm").style.display="none";
+    $("registerForm").style.display="none";
+    $("userBox").style.display="none";
+    $("profileCard").style.display="none";
+  }
+});
+</script>
+
+<script>
+const ioClient=io();let pc=null,stream=null,roomCode=null,isHost=false,pendingOffer=null,pendingCandidates=[],battleStarted=false;
+function status(t){$("status").textContent=t}
+function setAura(player,value){value=Math.max(0,Math.min(100,value));$("score"+player).textContent="Aura: "+value;$("fill"+player).style.width=value+"%";$("box"+player).style.setProperty("--aura",value/100)}
+function createPeer(){
+ if(pc)return pc;
+ pc=new RTCPeerConnection({iceServers:[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}]});
+ if(stream)stream.getTracks().forEach(t=>pc.addTrack(t,stream));
+ pc.ontrack=e=>{if(e.streams&&e.streams[0]){$("remote").srcObject=e.streams[0];status("✅ ¡Cámara del rival conectada!")}};
+ pc.onicecandidate=e=>{if(e.candidate&&roomCode)ioClient.emit("signal",{candidate:e.candidate})};
+ pc.onconnectionstatechange=()=>{
+   if(pc.connectionState==="connected"){status("🟢 ¡Los dos jugadores están conectados!");$("battle").disabled=false}
+   else if(pc.connectionState==="failed")status("❌ No se pudo conectar. Pulsa Activar cámara y vuelve a intentarlo.")
+ };
+ return pc
+}
+async function activateCamera(){
+ try{
+  if(!stream){stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"user"},audio:false});$("local").srcObject=stream}
+  createPeer();
+  const senders=pc.getSenders();
+  stream.getTracks().forEach(track=>{if(!senders.some(s=>s.track&&s.track.kind===track.kind))pc.addTrack(track,stream)});
+  status("📷 Cámara activa.");
+  if(pendingOffer){const offer=pendingOffer;pendingOffer=null;await processOffer(offer)}
+  if(isHost&&roomCode)await makeOffer();
+ }catch(e){console.error(e);status("❌ No se pudo acceder a la cámara. Revisa el permiso del navegador.")}
+}
+async function makeOffer(){if(!pc||!stream)return;const offer=await pc.createOffer();await pc.setLocalDescription(offer);ioClient.emit("signal",{offer:pc.localDescription});status("🔄 Conectando con el rival...")}
+async function processOffer(offer){
+ if(!stream){pendingOffer=offer;status("📷 Activa tu cámara para conectar con el rival.");return}
+ createPeer();await pc.setRemoteDescription(offer);
+ for(const candidate of pendingCandidates){try{await pc.addIceCandidate(candidate)}catch(e){}}
+ pendingCandidates=[];
+ const answer=await pc.createAnswer();await pc.setLocalDescription(answer);ioClient.emit("signal",{answer:pc.localDescription});status("🔄 Respondiendo al rival...")
+}
+$("create").onclick=()=>{ioClient.emit("create",c=>{roomCode=c;isHost=true;$("code").textContent="CÓDIGO: "+c;status("Sala creada. Activa tu cámara y comparte el código.")})};
+$("join").onclick=()=>{const c=$("room").value.trim().toUpperCase();if(!c){status("Escribe el código de la sala.");return}ioClient.emit("join",c,r=>{if(r.ok){roomCode=c;isHost=false;status("✅ Entraste a la sala. Activa tu cámara.")}else status("❌ "+r.error)})};
+$("cam").onclick=activateCamera;
+ioClient.on("peer-joined",()=>{status("👤 ¡Rival conectado! Activa tu cámara.");if(isHost&&stream)makeOffer()});
+ioClient.on("signal",async m=>{
+ try{
+  if(m.offer)await processOffer(m.offer);
+  if(m.answer&&pc){await pc.setRemoteDescription(m.answer);for(const candidate of pendingCandidates){try{await pc.addIceCandidate(candidate)}catch(e){}}pendingCandidates=[]}
+  if(m.candidate){if(pc&&pc.remoteDescription){try{await pc.addIceCandidate(m.candidate)}catch(e){}}else pendingCandidates.push(m.candidate)}
+ }catch(e){console.error("Error de señal:",e)}
+});
+function runBattle(){
+ if(battleStarted)return;
+ battleStarted=true;status("🔥 ¡BATALLA DE AURA!");let n=0;setAura(1,0);setAura(2,0);
+ const timer=setInterval(()=>{
+  n++;setAura(1,Math.floor(Math.random()*101));setAura(2,Math.floor(Math.random()*101));
+  if(n>=10){clearInterval(timer);const a=Math.floor(Math.random()*101),b=Math.floor(Math.random()*101);setAura(1,a);setAura(2,b);status(a>b?"🏆 ¡Jugador 1 gana!":b>a?"🏆 ¡Jugador 2 gana!":"🤝 ¡Empate!");battleStarted=false}
+ },1000)
+}
+$("battle").onclick=()=>{if(!roomCode)return;ioClient.emit("start")};
+ioClient.on("start",runBattle);
+</script>
+</body>
+</html>
