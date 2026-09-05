@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AURA BATTLE</title>
+<style>
+body{margin:0;font-family:Arial,sans-serif;background:#090b14;color:#fff;text-align:center}
+.wrap{max-width:900px;margin:auto;padding:20px}
+h1{font-size:42px;margin:10px 0}
+button,input{font-size:18px;padding:12px 16px;border-radius:10px;border:0;margin:6px}
+button{cursor:pointer;font-weight:bold}
+input{width:220px;box-sizing:border-box}
+#auth{background:#151927;border-radius:16px;padding:16px;margin:15px 0}
+#auth input{display:block;margin:8px auto;width:min(330px,90%)}
+#authStatus{color:#ddd;min-height:24px}
+#userBox{display:none}
+#userEmail{font-weight:bold}
+#app{display:none}
+#status{margin:15px 0;color:#ddd}
+.videos{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.card{background:#151927;border-radius:16px;padding:12px}
+.aura-box{position:relative;border-radius:14px;padding:5px;--aura:0;transition:.25s}
+.aura-box::before{content:"";position:absolute;inset:-4px;border-radius:18px;background:radial-gradient(circle,rgba(120,70,255,.65),rgba(0,220,255,.25) 45%,transparent 72%);opacity:calc(.15 + var(--aura) * .75);filter:blur(calc(4px + var(--aura) * 12px));transform:scale(calc(1 + var(--aura) * .08));animation:auraPulse 1.1s infinite alternate;pointer-events:none}
+.aura-box video{position:relative;z-index:1}
+@keyframes auraPulse{from{transform:scale(1)}to{transform:scale(1.05)}}
+video{width:100%;background:#000;border-radius:12px;aspect-ratio:16/9;object-fit:cover}
+.score{font-size:30px;font-weight:bold;margin:10px}
+.bar{height:14px;background:#303447;border-radius:20px;overflow:hidden;margin:8px 2px}
+.fill{height:100%;width:0%;transition:width .25s;border-radius:20px;background:linear-gradient(90deg,#36e1ff,#8b5cff,#ff4fd8)}
+.small{font-size:14px;color:#aaa}
+@media(max-width:700px){.videos{grid-template-columns:1fr}h1{font-size:34px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>⚡ AURA BATTLE ⚡</h1>
+
+<section id="auth">
+  <h2>👤 Cuenta</h2>
+  <div id="loginForm">
+    <input id="email" type="email" placeholder="Correo electrónico" autocomplete="email">
+    <input id="password" type="password" placeholder="Contraseña" autocomplete="current-password">
+    <input id="name" type="text" placeholder="Nombre (solo para registrarte)" autocomplete="name">
+    <button id="register">📝 CREAR CUENTA</button>
+    <button id="login">🔐 INICIAR SESIÓN</button>
+  </div>
+  <div id="userBox">
+    <div>Conectado como <span id="userEmail"></span></div>
+    <button id="logout">Cerrar sesión</button>
+  </div>
+  <div id="authStatus"></div>
+  <div class="small">Tu cuenta se guarda de forma segura en Firebase Authentication.</div>
+</section>
+
+<section id="app">
+<p>Crea una sala y comparte el código con tu rival.</p>
+<div><button id="create">CREAR SALA</button><input id="room" placeholder="CÓDIGO" maxlength="6"><button id="join">UNIRME</button></div>
+<div><button id="cam">📷 ACTIVAR CÁMARA</button><button id="battle" disabled>🔥 INICIAR BATALLA</button></div>
+<h2 id="code"></h2><div id="status">Listo.</div>
+<div class="videos">
+<div class="card"><h2>Jugador 1</h2><div class="aura-box" id="box1"><video id="local" autoplay playsinline muted></video></div><div class="score" id="score1">Aura: 0</div><div class="bar"><div class="fill" id="fill1"></div></div></div>
+<div class="card"><h2>Jugador 2</h2><div class="aura-box" id="box2"><video id="remote" autoplay playsinline></video></div><div class="score" id="score2">Aura: 0</div><div class="bar"><div class="fill" id="fill2"></div></div></div>
+</div>
+</section>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyCNlwur7gY1PKSZClhIye7ti8ZR2KC8EDQ",
+  authDomain: "aura-battle-3ced4.firebaseapp.com",
+  projectId: "aura-battle-3ced4",
+  storageBucket: "aura-battle-3ced4.firebasestorage.app",
+  messagingSenderId: "531143198131",
+  appId: "1:531143198131:web:228f30c2f8f8e6ea6db7c6",
+  measurementId: "G-MV25F2ZDZT"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+const $=id=>document.getElementById(id);
+function authStatus(t){$("authStatus").textContent=t}
+
+$("register").onclick=async()=>{
+  const email=$("email").value.trim();
+  const password=$("password").value;
+  const name=$("name").value.trim();
+  if(!email||!password){authStatus("Escribe tu correo y contraseña.");return}
+  if(!name){authStatus("Escribe tu nombre de jugador.");return}
+  if(password.length<6){authStatus("La contraseña debe tener al menos 6 caracteres.");return}
+  try{
+    const cred=await auth.createUserWithEmailAndPassword(email,password);
+    await cred.user.updateProfile({displayName:name});
+    await db.collection("users").doc(cred.user.uid).set({
+      nombre:name,
+      email:email,
+      uid:cred.user.uid,
+      victorias:0,
+      derrotas:0,
+      aura:0,
+      creadoEn:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    authStatus("✅ Cuenta y perfil creados correctamente.");
+  }catch(e){
+    console.error(e);
+    authStatus("❌ "+friendlyAuthError(e));
+  }
+};
+
+$("login").onclick=async()=>{
+  const email=$("email").value.trim();
+  const password=$("password").value;
+  if(!email||!password){authStatus("Escribe tu correo y contraseña.");return}
+  try{
+    await auth.signInWithEmailAndPassword(email,password);
+    authStatus("✅ Sesión iniciada.");
+  }catch(e){
+    console.error(e);
+    authStatus("❌ "+friendlyAuthError(e));
+  }
+};
+
+$("logout").onclick=()=>auth.signOut();
+
+function friendlyAuthError(e){
+  const code=e&&e.code||"";
+  if(code.includes("email-already-in-use"))return"Este correo ya tiene una cuenta.";
+  if(code.includes("invalid-email"))return"El correo no es válido.";
+  if(code.includes("weak-password"))return"La contraseña es demasiado débil.";
+  if(code.includes("invalid-credential")||code.includes("wrong-password")||code.includes("user-not-found"))return"Correo o contraseña incorrectos.";
+  if(code.includes("too-many-requests"))return"Demasiados intentos. Espera un momento y vuelve a probar.";
+  if(code.includes("operation-not-allowed"))return"El acceso por correo y contraseña no está habilitado en Firebase.";
+  return"Ha ocurrido un error. Revisa los datos e inténtalo de nuevo.";
+}
+
+auth.onAuthStateChanged(async user=>{
+  if(user){
+    $("loginForm").style.display="none";
+    $("userBox").style.display="block";
+    $("userEmail").textContent=user.displayName ? user.displayName+" ("+user.email+")" : user.email;
+    $("app").style.display="block";
+
+    try{
+      const ref=db.collection("users").doc(user.uid);
+      const snap=await ref.get();
+      if(!snap.exists){
+        await ref.set({
+          nombre:user.displayName||"Jugador",
+          email:user.email||"",
+          uid:user.uid,
+          victorias:0,
+          derrotas:0,
+          aura:0,
+          creadoEn:firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
+    }catch(e){
+      console.error("Firestore:",e);
+      authStatus("⚠️ Cuenta iniciada, pero el perfil de Firestore aún no pudo guardarse. Revisa las reglas de Firestore.");
+    }
+  }else{
+    $("loginForm").style.display="block";
+    $("userBox").style.display="none";
+    $("app").style.display="none";
+  }
+});
+</script>
+
+<script>
+const ioClient=io();let pc=null,stream=null,roomCode=null,isHost=false,pendingOffer=null,pendingCandidates=[],battleStarted=false;
+function status(t){$("status").textContent=t}
+function setAura(player,value){value=Math.max(0,Math.min(100,value));$("score"+player).textContent="Aura: "+value;$("fill"+player).style.width=value+"%";$("box"+player).style.setProperty("--aura",value/100)}
+function createPeer(){
+ if(pc)return pc;
+ pc=new RTCPeerConnection({iceServers:[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}]});
+ if(stream)stream.getTracks().forEach(t=>pc.addTrack(t,stream));
+ pc.ontrack=e=>{if(e.streams&&e.streams[0]){$("remote").srcObject=e.streams[0];status("✅ ¡Cámara del rival conectada!")}};
+ pc.onicecandidate=e=>{if(e.candidate&&roomCode)ioClient.emit("signal",{candidate:e.candidate})};
+ pc.onconnectionstatechange=()=>{
+   if(pc.connectionState==="connected"){status("🟢 ¡Los dos jugadores están conectados!");$("battle").disabled=false}
+   else if(pc.connectionState==="failed")status("❌ No se pudo conectar. Pulsa Activar cámara y vuelve a intentarlo.")
+ };
+ return pc
+}
+async function activateCamera(){
+ try{
+  if(!stream){stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"user"},audio:false});$("local").srcObject=stream}
+  createPeer();
+  const senders=pc.getSenders();
+  stream.getTracks().forEach(track=>{if(!senders.some(s=>s.track&&s.track.kind===track.kind))pc.addTrack(track,stream)});
+  status("📷 Cámara activa.");
+  if(pendingOffer){const offer=pendingOffer;pendingOffer=null;await processOffer(offer)}
+  if(isHost&&roomCode)await makeOffer();
+ }catch(e){console.error(e);status("❌ No se pudo acceder a la cámara. Revisa el permiso del navegador.")}
+}
+async function makeOffer(){if(!pc||!stream)return;const offer=await pc.createOffer();await pc.setLocalDescription(offer);ioClient.emit("signal",{offer:pc.localDescription});status("🔄 Conectando con el rival...")}
+async function processOffer(offer){
+ if(!stream){pendingOffer=offer;status("📷 Activa tu cámara para conectar con el rival.");return}
+ createPeer();await pc.setRemoteDescription(offer);
+ for(const candidate of pendingCandidates){try{await pc.addIceCandidate(candidate)}catch(e){}}
+ pendingCandidates=[];
+ const answer=await pc.createAnswer();await pc.setLocalDescription(answer);ioClient.emit("signal",{answer:pc.localDescription});status("🔄 Respondiendo al rival...")
+}
+$("create").onclick=()=>{ioClient.emit("create",c=>{roomCode=c;isHost=true;$("code").textContent="CÓDIGO: "+c;status("Sala creada. Activa tu cámara y comparte el código.")})};
+$("join").onclick=()=>{const c=$("room").value.trim().toUpperCase();if(!c){status("Escribe el código de la sala.");return}ioClient.emit("join",c,r=>{if(r.ok){roomCode=c;isHost=false;status("✅ Entraste a la sala. Activa tu cámara.")}else status("❌ "+r.error)})};
+$("cam").onclick=activateCamera;
+ioClient.on("peer-joined",()=>{status("👤 ¡Rival conectado! Activa tu cámara.");if(isHost&&stream)makeOffer()});
+ioClient.on("signal",async m=>{
+ try{
+  if(m.offer)await processOffer(m.offer);
+  if(m.answer&&pc){await pc.setRemoteDescription(m.answer);for(const candidate of pendingCandidates){try{await pc.addIceCandidate(candidate)}catch(e){}}pendingCandidates=[]}
+  if(m.candidate){if(pc&&pc.remoteDescription){try{await pc.addIceCandidate(m.candidate)}catch(e){}}else pendingCandidates.push(m.candidate)}
+ }catch(e){console.error("Error de señal:",e)}
+});
+function runBattle(){
+ if(battleStarted)return;
+ battleStarted=true;status("🔥 ¡BATALLA DE AURA!");let n=0;setAura(1,0);setAura(2,0);
+ const timer=setInterval(()=>{
+  n++;setAura(1,Math.floor(Math.random()*101));setAura(2,Math.floor(Math.random()*101));
+  if(n>=10){clearInterval(timer);const a=Math.floor(Math.random()*101),b=Math.floor(Math.random()*101);setAura(1,a);setAura(2,b);status(a>b?"🏆 ¡Jugador 1 gana!":b>a?"🏆 ¡Jugador 2 gana!":"🤝 ¡Empate!");battleStarted=false}
+ },1000)
+}
+$("battle").onclick=()=>{if(!roomCode)return;ioClient.emit("start")};
+ioClient.on("start",runBattle);
+</script>
+</body>
+</html>
