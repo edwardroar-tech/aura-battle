@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AURA BATTLE</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#090b14;color:#fff;text-align:center}
+.wrap{max-width:900px;margin:auto;padding:20px}
+h1{font-size:42px;margin:10px 0 24px}
+h2{margin:12px 0}
+button,input{font-size:18px;padding:13px 16px;border-radius:12px;border:0;margin:6px}
+button{cursor:pointer;font-weight:bold}
+button:disabled{opacity:.45;cursor:not-allowed}
+input{width:min(100%,420px);display:block;margin:10px auto;text-transform:none}
+.auth-card,.card{background:#151927;border-radius:18px;padding:18px;margin:16px 0}
+.auth-card{max-width:620px;margin:0 auto 22px}
+.auth-choice{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.auth-choice button{min-height:70px}
+.auth-panel{display:none}
+.auth-panel.active{display:block}
+.back{background:#303447;color:#fff;font-size:15px}
+.auth-message{min-height:28px;margin:10px;color:#ddd}
+.account{font-size:20px;margin:12px 0}
+.videos{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.aura-box{position:relative;border-radius:14px;padding:5px;--aura:0;transition:.25s}
+.aura-box::before{content:"";position:absolute;inset:-4px;border-radius:18px;background:radial-gradient(circle,rgba(120,70,255,.65),rgba(0,220,255,.25) 45%,transparent 72%);opacity:calc(.15 + var(--aura) * .75);filter:blur(calc(4px + var(--aura) * 12px));transform:scale(calc(1 + var(--aura) * .08));animation:auraPulse 1.1s infinite alternate;pointer-events:none}
+.aura-box video{position:relative;z-index:1}
+@keyframes auraPulse{from{transform:scale(1)}to{transform:scale(1.05)}}
+video{width:100%;background:#000;border-radius:12px;aspect-ratio:16/9;object-fit:cover}
+.score{font-size:30px;font-weight:bold;margin:10px}
+.bar{height:14px;background:#303447;border-radius:20px;overflow:hidden;margin:8px 2px}
+.fill{height:100%;width:0%;transition:width .25s;border-radius:20px;background:linear-gradient(90deg,#36e1ff,#8b5cff,#ff4fd8)}
+#battle{margin-top:10px}
+.hidden{display:none!important}
+small{color:#aaa}
+@media(max-width:700px){
+ .videos{grid-template-columns:1fr}
+ h1{font-size:34px}
+ .auth-choice{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>⚡ AURA BATTLE ⚡</h1>
+
+<div class="auth-card">
+  <div id="authChoice">
+    <h2>👤 Bienvenido</h2>
+    <p>¿Qué quieres hacer?</p>
+    <div class="auth-choice">
+      <button id="showLogin">🔐 INICIAR SESIÓN</button>
+      <button id="showRegister">📝 CREAR CUENTA</button>
+    </div>
+  </div>
+
+  <div id="loginPanel" class="auth-panel">
+    <h2>🔐 Iniciar sesión</h2>
+    <input id="loginEmail" type="email" placeholder="Correo electrónico" autocomplete="email">
+    <input id="loginPassword" type="password" placeholder="Contraseña" autocomplete="current-password">
+    <button id="loginBtn">🔓 ENTRAR</button>
+    <button class="back" id="backFromLogin">← Volver</button>
+    <div id="loginMessage" class="auth-message"></div>
+  </div>
+
+  <div id="registerPanel" class="auth-panel">
+    <h2>📝 Crear cuenta</h2>
+    <input id="registerName" type="text" placeholder="Nombre de jugador" maxlength="30" autocomplete="name">
+    <input id="registerEmail" type="email" placeholder="Correo electrónico" autocomplete="email">
+    <input id="registerPassword" type="password" placeholder="Contraseña" autocomplete="new-password">
+    <input id="registerPassword2" type="password" placeholder="Repite la contraseña" autocomplete="new-password">
+    <button id="registerBtn">📝 CREAR CUENTA</button>
+    <button class="back" id="backFromRegister">← Volver</button>
+    <div id="registerMessage" class="auth-message"></div>
+    <small>La contraseña debe tener al menos 6 caracteres.</small>
+  </div>
+
+  <div id="accountPanel" class="hidden">
+    <h2>👤 Cuenta</h2>
+    <div class="account">Conectado como <b id="accountName"></b></div>
+    <button id="logoutBtn">🚪 CERRAR SESIÓN</button>
+    <div id="accountMessage" class="auth-message"></div>
+  </div>
+</div>
+
+<div id="gameArea" class="hidden">
+  <p>Crea una sala y comparte el código con tu rival.</p>
+  <div>
+    <button id="create">CREAR SALA</button>
+    <input id="room" placeholder="CÓDIGO" maxlength="6">
+    <button id="join">UNIRME</button>
+  </div>
+  <div>
+    <button id="cam">📷 ACTIVAR CÁMARA</button>
+    <button id="battle" disabled>🔥 INICIAR BATALLA</button>
+  </div>
+  <h2 id="code"></h2>
+  <div id="status">Listo.</div>
+
+  <div class="videos">
+    <div class="card">
+      <h2>Jugador 1</h2>
+      <div class="aura-box" id="box1"><video id="local" autoplay playsinline muted></video></div>
+      <div class="score" id="score1">Aura: 0</div>
+      <div class="bar"><div class="fill" id="fill1"></div></div>
+    </div>
+    <div class="card">
+      <h2>Jugador 2</h2>
+      <div class="aura-box" id="box2"><video id="remote" autoplay playsinline></video></div>
+      <div class="score" id="score2">Aura: 0</div>
+      <div class="bar"><div class="fill" id="fill2"></div></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+import {getAuth,onAuthStateChanged,createUserWithEmailAndPassword,signInWithEmailAndPassword,signOut,updateProfile} from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+
+const firebaseConfig={
+  apiKey:"AIzaSyCNlwur7gY1PKSZClhIye7ti8ZR2KC8EDQ",
+  authDomain:"aura-battle-3ced4.firebaseapp.com",
+  projectId:"aura-battle-3ced4",
+  storageBucket:"aura-battle-3ced4.firebasestorage.app",
+  messagingSenderId:"531143198131",
+  appId:"1:531143198131:web:228f30c2f8f8e6ea6db7c6",
+  measurementId:"G-MV25F2ZDZT"
+};
+
+const app=initializeApp(firebaseConfig);
+const auth=getAuth(app);
+const ioClient=io();
+
+const $=id=>document.getElementById(id);
+const authChoice=$("authChoice"),loginPanel=$("loginPanel"),registerPanel=$("registerPanel"),accountPanel=$("accountPanel"),gameArea=$("gameArea");
+
+function showAuthHome(){
+  authChoice.style.display="block";
+  loginPanel.classList.remove("active");
+  registerPanel.classList.remove("active");
+}
+function showLogin(){
+  authChoice.style.display="none";
+  loginPanel.classList.add("active");
+  registerPanel.classList.remove("active");
+  $("loginMessage").textContent="";
+}
+function showRegister(){
+  authChoice.style.display="none";
+  loginPanel.classList.remove("active");
+  registerPanel.classList.add("active");
+  $("registerMessage").textContent="";
+}
+$("showLogin").onclick=showLogin;
+$("showRegister").onclick=showRegister;
+$("backFromLogin").onclick=showAuthHome;
+$("backFromRegister").onclick=showAuthHome;
+
+function friendlyError(e){
+  const code=e?.code||"";
+  if(code.includes("email-already-in-use")) return "Ese correo ya tiene una cuenta.";
+  if(code.includes("invalid-credential")||code.includes("wrong-password")||code.includes("user-not-found")) return "Correo o contraseña incorrectos.";
+  if(code.includes("weak-password")) return "La contraseña debe tener al menos 6 caracteres.";
+  if(code.includes("invalid-email")) return "Escribe un correo válido.";
+  return "No se pudo completar la operación. Inténtalo de nuevo.";
+}
+
+$("registerBtn").onclick=async()=>{
+  const name=$("registerName").value.trim();
+  const email=$("registerEmail").value.trim();
+  const p1=$("registerPassword").value;
+  const p2=$("registerPassword2").value;
+  const msg=$("registerMessage");
+  msg.textContent="";
+  if(!name){msg.textContent="Escribe tu nombre de jugador.";return}
+  if(!email){msg.textContent="Escribe tu correo.";return}
+  if(p1.length<6){msg.textContent="La contraseña debe tener al menos 6 caracteres.";return}
+  if(p1!==p2){msg.textContent="❌ Las contraseñas no coinciden.";return}
+  try{
+    const cred=await createUserWithEmailAndPassword(auth,email,p1);
+    await updateProfile(cred.user,{displayName:name});
+    msg.textContent="✅ Cuenta creada correctamente.";
+  }catch(e){console.error(e);msg.textContent="❌ "+friendlyError(e)}
+};
+
+$("loginBtn").onclick=async()=>{
+  const email=$("loginEmail").value.trim();
+  const password=$("loginPassword").value;
+  const msg=$("loginMessage");
+  msg.textContent="";
+  if(!email||!password){msg.textContent="Escribe tu correo y contraseña.";return}
+  try{
+    await signInWithEmailAndPassword(auth,email,password);
+  }catch(e){console.error(e);msg.textContent="❌ "+friendlyError(e)}
+};
+
+$("logoutBtn").onclick=async()=>{
+  await signOut(auth);
+  $("accountMessage").textContent="";
+  $("loginMessage").textContent="";
+  $("registerMessage").textContent="";
+  $("status").textContent="Listo.";
+};
+
+onAuthStateChanged(auth,user=>{
+  if(user){
+    authChoice.style.display="none";
+    loginPanel.classList.remove("active");
+    registerPanel.classList.remove("active");
+    accountPanel.classList.remove("hidden");
+    gameArea.classList.remove("hidden");
+    $("accountName").textContent=user.displayName||user.email;
+    $("accountMessage").textContent="✅ Sesión iniciada.";
+  }else{
+    accountPanel.classList.add("hidden");
+    gameArea.classList.add("hidden");
+    showAuthHome();
+  }
+});
+
+// AURA BATTLE / WebRTC
+let pc=null,stream=null,roomCode=null,isHost=false,pendingOffer=null,pendingCandidates=[],battleStarted=false;
+
+function status(t){$("status").textContent=t}
+function setAura(player,value){
+  value=Math.max(0,Math.min(100,value));
+  $("score"+player).textContent="Aura: "+value;
+  $("fill"+player).style.width=value+"%";
+  $("box"+player).style.setProperty("--aura",value/100);
+}
+function createPeer(){
+  if(pc)return pc;
+  pc=new RTCPeerConnection({iceServers:[
+    {urls:"stun:stun.l.google.com:19302"},
+    {urls:"stun:stun1.l.google.com:19302"}
+  ]});
+  if(stream)stream.getTracks().forEach(t=>pc.addTrack(t,stream));
+  pc.ontrack=e=>{
+    if(e.streams&&e.streams[0]){
+      $("remote").srcObject=e.streams[0];
+      status("✅ ¡Cámara del rival conectada!");
+    }
+  };
+  pc.onicecandidate=e=>{
+    if(e.candidate&&roomCode)ioClient.emit("signal",{candidate:e.candidate});
+  };
+  pc.onconnectionstatechange=()=>{
+    if(pc.connectionState==="connected"){
+      status("🟢 ¡Los dos jugadores están conectados!");
+      $("battle").disabled=false;
+    }else if(pc.connectionState==="failed"){
+      status("❌ No se pudo conectar. Pulsa Activar cámara y vuelve a intentarlo.");
+    }
+  };
+  return pc;
+}
+async function activateCamera(){
+  try{
+    if(!stream){
+      stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"user"},audio:false});
+      $("local").srcObject=stream;
+    }
+    createPeer();
+    const senders=pc.getSenders();
+    stream.getTracks().forEach(track=>{
+      if(!senders.some(s=>s.track&&s.track.kind===track.kind))pc.addTrack(track,stream);
+    });
+    status("📷 Cámara activa.");
+    if(pendingOffer){
+      const offer=pendingOffer;
+      pendingOffer=null;
+      await processOffer(offer);
+    }
+    if(isHost&&roomCode)await makeOffer();
+  }catch(e){
+    console.error(e);
+    status("❌ No se pudo acceder a la cámara. Revisa el permiso del navegador.");
+  }
+}
+async function makeOffer(){
+  if(!pc||!stream)return;
+  const offer=await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  ioClient.emit("signal",{offer:pc.localDescription});
+  status("🔄 Conectando con el rival...");
+}
+async function processOffer(offer){
+  if(!stream){
+    pendingOffer=offer;
+    status("📷 Activa tu cámara para conectar con el rival.");
+    return;
+  }
+  createPeer();
+  await pc.setRemoteDescription(offer);
+  for(const candidate of pendingCandidates){
+    try{await pc.addIceCandidate(candidate)}catch(e){}
+  }
+  pendingCandidates=[];
+  const answer=await pc.createAnswer();
+  await pc.setLocalDescription(answer);
+  ioClient.emit("signal",{answer:pc.localDescription});
+  status("🔄 Respondiendo al rival...");
+}
+
+$("create").onclick=()=>{
+  ioClient.emit("create",c=>{
+    roomCode=c;isHost=true;
+    $("code").textContent="CÓDIGO: "+c;
+    status("Sala creada. Activa tu cámara y comparte el código.");
+  });
+};
+$("join").onclick=()=>{
+  const c=$("room").value.trim().toUpperCase();
+  if(!c){status("Escribe el código de la sala.");return}
+  ioClient.emit("join",c,r=>{
+    if(r.ok){roomCode=c;isHost=false;status("✅ Entraste a la sala. Activa tu cámara.")}
+    else status("❌ "+r.error);
+  });
+};
+$("cam").onclick=activateCamera;
+
+ioClient.on("peer-joined",()=>{
+  status("👤 ¡Rival conectado! Activa tu cámara.");
+  if(isHost&&stream)makeOffer();
+});
+ioClient.on("signal",async m=>{
+  try{
+    if(m.offer)await processOffer(m.offer);
+    if(m.answer&&pc){
+      await pc.setRemoteDescription(m.answer);
+      for(const candidate of pendingCandidates){
+        try{await pc.addIceCandidate(candidate)}catch(e){}
+      }
+      pendingCandidates=[];
+    }
+    if(m.candidate){
+      if(pc&&pc.remoteDescription){
+        try{await pc.addIceCandidate(m.candidate)}catch(e){}
+      }else pendingCandidates.push(m.candidate);
+    }
+  }catch(e){console.error("Error de señal:",e)}
+});
+
+function runBattle(){
+  if(battleStarted)return;
+  battleStarted=true;
+  status("🔥 ¡BATALLA DE AURA!");
+  let n=0;
+  setAura(1,0);setAura(2,0);
+  const timer=setInterval(()=>{
+    n++;
+    setAura(1,Math.floor(Math.random()*101));
+    setAura(2,Math.floor(Math.random()*101));
+    if(n>=10){
+      clearInterval(timer);
+      const a=Math.floor(Math.random()*101),b=Math.floor(Math.random()*101);
+      setAura(1,a);setAura(2,b);
+      status(a>b?"🏆 ¡Jugador 1 gana!":b>a?"🏆 ¡Jugador 2 gana!":"🤝 ¡Empate!");
+      battleStarted=false;
+    }
+  },1000);
+}
+$("battle").onclick=()=>{
+  if(!roomCode)return;
+  ioClient.emit("start");
+};
+ioClient.on("start",runBattle);
+</script>
+</body>
+</html>
