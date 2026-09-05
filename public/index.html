@@ -176,164 +176,73 @@ body{
 
 </style>
 </head>
+<style>
+:root{--bg:#07111d;--panel:#0d1a29;--panel2:#101f31;--line:#21405d;--blue:#16a8ff;--red:#ff2d3f;--text:#f5f8ff;--muted:#9fb0c4}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 80% 10%,rgba(255,35,55,.14),transparent 28%),radial-gradient(circle at 10% 70%,rgba(0,132,255,.14),transparent 32%),#050b13;color:var(--text);font-family:Arial,Helvetica,sans-serif;min-height:100vh}button,input{font:inherit}button{cursor:pointer}body:before{content:"";position:fixed;inset:0;pointer-events:none;background:url("assets/aura-texture.jpg") center/cover;opacity:.08;z-index:-1}
+.wrap{max-width:1000px;margin:0 auto;padding:25px 28px 50px}.topbar{height:58px;display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}.brand{font-family:Impact,Arial Black,sans-serif;font-style:italic;font-size:25px;letter-spacing:1px}.brand b{color:#ff3348}.top-menu{display:none;background:#102337;color:#fff;border:1px solid #2c5b7f;border-radius:10px;padding:10px 14px;font-weight:900}
+#auth{background:linear-gradient(145deg,#101d2c,#09131f);border:1px solid #29445e;border-radius:18px;padding:28px;max-width:650px;margin:40px auto;box-shadow:0 20px 60px #0008;text-align:center}#auth h1{font:italic 42px Impact,Arial Black,sans-serif;letter-spacing:2px;text-shadow:0 0 20px #159cff55}#auth h1::first-letter{color:#16a8ff}.auth-choice button,.auth-menu>button,#userBox button{display:block;width:min(360px,100%);margin:12px auto;padding:15px;border:1px solid #6c7f91;border-radius:10px;background:linear-gradient(135deg,#f4f7fb,#cbd4df);font-weight:900;color:#07111d}.auth-choice button:first-of-type{border-color:#168fe0}.auth-menu,.auth-choice{display:block}.auth-menu{display:none}.auth-back{background:#18283a!important;color:#fff!important;border-color:#35526e!important}.auth-menu input{display:block;width:min(390px,100%);margin:10px auto;padding:14px;background:#07121e;border:1px solid #36506a;color:#fff;border-radius:9px}.password-wrap{position:relative;width:min(390px,100%);margin:10px auto}.password-wrap input{width:100%;margin:0;padding-right:50px}.eye-btn{position:absolute!important;right:5px;top:50%;transform:translateY(-50%);width:44px!important;margin:0!important;padding:8px!important;background:transparent!important;border:0!important;color:#fff!important}.password-check{min-height:24px;font-weight:800}.small,.legal{color:var(--muted);font-size:13px}.tab-section{display:none}.tab-section.active{display:block;animation:enter .25s ease}@keyframes enter{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.drawer{position:fixed;left:14px;top:14px;bottom:14px;width:220px;background:linear-gradient(180deg,#0c1928,#050b13);border:1px solid #28435c;border-left:3px solid var(--blue);border-radius:6px 18px 18px 6px;padding:14px;z-index:50;display:none;box-shadow:12px 0 40px #0008}.drawer.open{display:flex;flex-direction:column}.drawer-top{display:flex;justify-content:space-between;align-items:center}.brand-mini{display:flex;gap:8px;align-items:center;font:italic 18px Impact,Arial Black,sans-serif}.brand-mini b{color:#ff3447}.close-menu{background:none;border:0;color:#fff;font-size:28px}.player-mini{display:flex;gap:10px;align-items:center;margin:18px 0;padding:10px;background:#091523;border:1px solid #203b54;border-radius:10px}.avatar,.profile-avatar{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle,#2aaeff,#0b2540);border:2px solid #159eff}.player-mini small{display:block;color:#8095a9;font-size:10px;overflow:hidden;max-width:130px}.tab-row{display:flex;flex-direction:column;gap:7px;overflow:auto}.tab-btn{width:100%;text-align:left;padding:13px;border:1px solid #1e354b;background:#0a1622;color:#c8d5e2;border-radius:7px 13px 13px 7px;font-weight:900;font-style:italic;text-transform:uppercase}.tab-btn:hover{border-color:#3976a1}.tab-btn.active{background:linear-gradient(90deg,#eaf2f9,#b9c8d5);color:#07111d;border-left:4px solid var(--red);box-shadow:0 0 20px #fff2;transform:translateX(4px)}.drawer-footer{margin-top:auto;color:#6e8195;font-size:10px;text-align:center;padding:10px}
+body.logged .drawer{display:flex}body.logged .wrap{padding-left:260px}body.logged #auth{display:none}.menu-toggle{display:none;position:fixed;left:12px;top:14px;z-index:60;background:#102337;color:#fff;border:1px solid #39729b;border-radius:8px;padding:9px 12px;font-size:22px}.section-title{display:flex;align-items:center;gap:15px;margin:18px 0 20px}.section-title>span{font-size:38px}.section-title h2{margin:0;font:italic 31px Impact,Arial Black,sans-serif;letter-spacing:1px}.section-title p{margin:5px 0 0;color:var(--muted)}.hero{border-radius:15px;min-height:270px;background-size:cover;background-position:center;overflow:hidden;border:1px solid #285475;position:relative}.home-hero{background-image:linear-gradient(90deg,#06111de8,#06111d99),url("assets/arena-home.jpg")}.battle-hero{min-height:210px;background-image:linear-gradient(90deg,#04182bd9,#18050bd0),url("assets/arena-battle.jpg")}.hero-content{padding:45px;max-width:650px}.hero h1,.hero h2{font:italic 42px Impact,Arial Black,sans-serif;letter-spacing:1px}.hero p{font-size:17px;color:#d4dfeb;line-height:1.5}.eyebrow{color:#2bb4ff;font-weight:900;letter-spacing:2px}.home-status{display:inline-block;margin-top:15px;padding:10px 15px;border:1px solid #2587ba;background:#071a29cc;border-radius:9px;color:#67f1a1;font-weight:900}.card-modern,.battle-panel{background:linear-gradient(145deg,#0d1b2a,#08131f);border:1px solid #29455f;border-radius:13px;padding:20px;margin-top:15px;box-shadow:0 12px 30px #0006}.profile-hero{display:flex;gap:18px;align-items:center;background:linear-gradient(90deg,#071725,#102d45);padding:20px;border-radius:13px;border:1px solid #285b7e}.profile-avatar{width:76px;height:76px;font-size:30px}.profile-hero h2{margin:0;font:italic 32px Impact,Arial Black,sans-serif}.rank-label{color:#35baff;font-weight:900;margin-top:4px}.profile-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:15px}.profile-stat{background:#07111d;border:1px solid #203b54;padding:18px;border-radius:11px}.profile-stat b{display:block;font-size:30px;margin-top:7px}.wide-btn{width:100%;margin-top:14px}.settings-row{display:flex;justify-content:space-between;gap:15px;align-items:center;padding:16px 0;border-bottom:1px solid #203448}.settings-row:last-child{border-bottom:0}.settings-row small{display:block;color:#8296aa;margin-top:4px}.settings-row button,.card-modern button,.battle-panel button{padding:11px 15px;border-radius:8px;border:1px solid #3b607e;background:linear-gradient(135deg,#edf3f8,#c2ced9);font-weight:900}.danger-btn{background:linear-gradient(135deg,#ff3348,#a60e20)!important;color:#fff!important;border-color:#ff5565!important}.coming{display:inline-block;margin-top:12px;padding:6px 10px;border:1px solid #2d75a2;border-radius:20px;color:#43b9ff;font-size:11px;font-weight:900}.chat-empty,.ranking-placeholder{text-align:center;padding:55px 20px}.big-icon{font-size:55px}.podium{font-size:55px}.league-banner{min-height:280px;border-radius:15px;border:1px solid #345979;background:linear-gradient(90deg,#061523aa,#100818aa),url("assets/league-banner.jpg") center/cover;display:grid;place-items:center;text-align:center}.league-banner h1{font:italic 42px Impact,Arial Black,sans-serif}.league-rank{margin-top:15px;padding:13px 25px;background:#07121dcc;border:1px solid #35aaf0;border-radius:9px;font-weight:900}.room-controls,.cam-controls{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:14px 0}.room-controls input{padding:12px;border-radius:8px;border:1px solid #35536c;background:#07111d;color:#fff;width:150px;text-align:center}.videos{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-top:20px}.card{background:#07111d;border:1px solid #28465f;border-radius:12px;padding:12px}.card video{width:100%;background:#000;border-radius:9px;aspect-ratio:16/9;object-fit:cover}.aura-box{position:relative;--aura:0;padding:4px}.aura-box:before{content:"";position:absolute;inset:-4px;border-radius:14px;background:radial-gradient(circle,#18b9ff88,#974cff44,transparent 70%);opacity:calc(.1 + var(--aura)*.8);filter:blur(8px);pointer-events:none}.aura-box video{position:relative;z-index:1}.score{text-align:center;font-size:24px;font-weight:900;margin:9px}.bar{height:12px;background:#243447;border-radius:20px;overflow:hidden}.fill{height:100%;width:0;background:linear-gradient(90deg,#16b5ff,#8e5cff,#ff3150);transition:.3s}.social-msg{margin:8px 0;color:#64e6a0}.player-result{display:flex;justify-content:space-between;align-items:center;padding:10px;margin:7px 0;background:#081523;border:1px solid #1e3c54;border-radius:8px}
+@media(max-width:900px){.drawer{display:none}body.logged .wrap{padding-left:20px}.top-menu{display:block}.wrap{padding:12px 16px 35px}.menu-toggle{display:block}.topbar{padding-left:48px}.drawer{left:8px;top:8px;bottom:8px;width:275px}.drawer.open{display:flex}#drawerOverlay{display:none;position:fixed;inset:0;background:#0008;z-index:45}#drawerOverlay.open{display:block}.videos{grid-template-columns:1fr}.profile-grid{grid-template-columns:1fr 1fr}.hero-content{padding:28px}.hero h1{font-size:34px}}
+@media(min-width:901px){body.logged #mainNav{display:flex}.topbar{display:none}}
+</style>
 <body>
-<div class="wrap">
-<h1>⚡ AURA BATTLE ⚡</h1>
-
-<section id="auth">
-  <h2>👤 Cuenta</h2>
-
-  <div id="authChoice" class="auth-choice">
-    <p>¿Qué deseas hacer?</p>
-    <button id="showLogin">🔐 INICIAR SESIÓN</button>
-    <button id="showRegister">📝 CREAR CUENTA</button>
+<div id="drawerOverlay"></div>
+<button id="menuToggle" class="menu-toggle" aria-label="Abrir menú">☰</button>
+<aside id="mainNav" class="drawer">
+  <div class="drawer-top">
+    <div class="brand-mini">⚡ <span>AURA<br><b>BATTLE</b></span></div>
+    <button id="closeMenu" class="close-menu">×</button>
   </div>
+  <div class="player-mini" id="playerMini"><div class="avatar">⚡</div><div><b id="miniName">Jugador</b><small id="miniEmail"></small></div></div>
+  <nav class="tab-row">
+    <button class="tab-btn active" data-tab="home">🏠 <span>Inicio</span></button>
+    <button class="tab-btn" data-tab="profileCard">👤 <span>Perfil</span></button>
+    <button class="tab-btn" data-tab="socialCard">👥 <span>Amigos</span></button>
+    <button class="tab-btn" data-tab="chatCard">💬 <span>Chat</span></button>
+    <button class="tab-btn" data-tab="battleSection">⚔️ <span>Batallas</span></button>
+    <button class="tab-btn" data-tab="rankingCard">🏆 <span>Ranking</span></button>
+    <button class="tab-btn" data-tab="leagueCard">🥇 <span>Liga</span></button>
+    <button class="tab-btn" data-tab="settingsCard">⚙️ <span>Ajustes</span></button>
+  </nav>
+  <div class="drawer-footer">© 2026 AURA BATTLE</div>
+</aside>
 
-  <div id="loginForm" class="auth-menu">
-    <h3>🔐 Iniciar sesión</h3>
-    <input id="loginEmail" type="email" placeholder="Correo electrónico" autocomplete="email">
-    <div class="password-wrap"><input id="loginPassword" type="password" placeholder="Contraseña" autocomplete="current-password"><button type="button" class="eye-btn" id="eyeLogin" aria-label="Mostrar contraseña">👁️</button></div>
-    <button id="login">🔐 INICIAR SESIÓN</button>
-    <button id="backLogin" class="auth-back">← Volver</button>
-  </div>
+<main class="wrap">
+  <header class="topbar"><div class="brand">⚡ AURA <b>BATTLE</b> ⚡</div><button id="topMenu" class="top-menu">☰ MENÚ</button></header>
 
-  <div id="registerForm" class="auth-menu">
-    <h3>📝 Crear cuenta</h3>
-    <input id="registerName" type="text" placeholder="Nombre de jugador" autocomplete="name">
-    <input id="registerEmail" type="email" placeholder="Correo electrónico" autocomplete="email">
-    <div class="password-wrap"><input id="registerPassword" type="password" placeholder="Contraseña (mínimo 6 caracteres)" autocomplete="new-password"><button type="button" class="eye-btn" id="eyeRegister" aria-label="Mostrar contraseña">👁️</button></div>
-    <div class="password-wrap"><input id="registerPassword2" type="password" placeholder="Repite la contraseña" autocomplete="new-password"><button type="button" class="eye-btn" id="eyeRegister2" aria-label="Mostrar contraseña">👁️</button></div>
-    <div id="passwordCheck" class="password-check"></div>
-    <button id="register">📝 CREAR CUENTA</button>
-    <button id="backRegister" class="auth-back">← Volver</button>
-  </div>
-
-  <div id="userBox">
-    <div>Conectado como <span id="userEmail"></span></div>
-    <button id="logout">Cerrar sesión</button>
-  </div>
-  <div id="authStatus"></div>
-  <div class="small">Tu cuenta se guarda de forma segura en Firebase Authentication.</div>
-</section>
-
-<nav id="mainNav">
-  <div class="tab-row">
-    <button class="tab-btn active" data-tab="home">🏠 Inicio</button>
-    <button class="tab-btn" data-tab="profileCard">👤 Perfil</button>
-    <button class="tab-btn" data-tab="socialCard">👥 Amigos</button>
-    <button class="tab-btn" data-tab="chatCard">💬 Chat</button>
-    <button class="tab-btn" data-tab="battleSection">⚡ Batallas</button>
-    <button class="tab-btn" data-tab="rankingCard">🏆 Ranking</button>
-    <button class="tab-btn" data-tab="leagueCard">🥇 Liga</button>
-    <button class="tab-btn" data-tab="settingsCard">⚙️ Ajustes</button>
-  </div>
-</nav>
-
-<section id="home" class="tab-section active">
-  <h2>⚡ AURA BATTLE</h2>
-  <p>Bienvenido. Desde aquí podrás acceder a tus batallas y novedades.</p>
-</section>
-
-<section id="profileCard" class="tab-section">
-  <div class="menu-header"><div class="menu-title">👤 Mi perfil</div></div>
-  <div id="profileName">Cargando perfil...</div>
-  <div class="profile-grid">
-    <div class="profile-stat">⚡ Aura<b id="profileAura">0</b></div>
-    <div class="profile-stat">🏆 Victorias<b id="profileWins">0</b></div>
-    <div class="profile-stat">❌ Derrotas<b id="profileLosses">0</b></div>
-  </div>
-  <button id="refreshProfile">🔄 ACTUALIZAR PERFIL</button>
-</section>
-
-<section id="socialCard" class="tab-section">
-  <h2>👥 Jugadores</h2>
-  <p>Busca a otros jugadores por su nombre.</p>
-  <input id="playerSearch" type="text" placeholder="Nombre del jugador">
-  <button id="searchPlayers">🔎 BUSCAR</button>
-  <div id="socialMsg" class="social-msg"></div>
-  <div id="searchResults"></div>
-  <h3>🤝 Solicitudes recibidas</h3>
-  <div id="friendRequests"></div>
-</section>
-
-<section id="chatCard" class="tab-section">
-  <h2>💬 Chat</h2>
-  <p>El chat privado entre jugadores será habilitado en el siguiente módulo.</p>
-</section>
-
-<section id="battleSection" class="tab-section">
-  <h2>⚡ Batallas</h2>
-  <p>Encuentra una sala, entra con tu código y prepárate para la batalla.</p>
-</section>
-
-<section id="rankingCard" class="tab-section">
-  <h2>🏆 Ranking</h2>
-  <p>Próximamente: clasificación de jugadores por Aura y victorias.</p>
-</section>
-
-<section id="leagueCard" class="tab-section">
-  <h2>🥇 Liga</h2>
-  <p>Próximamente: ligas, ascensos y descensos.</p>
-</section>
-
-<section id="settingsCard" class="tab-section">
-  <div class="menu-header">
-    <div class="menu-title">⚙️ Ajustes</div>
-  </div>
-
-  <div class="card-modern">
-    <h3>👤 Cuenta</h3>
-
-    <div class="settings-row">
-      <div>
-        <div class="settings-label">Nombre para mostrar</div>
-        <div class="settings-help">El nombre que verán otros jugadores.</div>
-      </div>
-      <button class="settings-action" id="changeNameBtn">Cambiar</button>
+  <section id="auth">
+    <h1>⚡ AURA BATTLE ⚡</h1>
+    <div id="authChoice" class="auth-choice">
+      <h2>CUENTA</h2><p>¿Qué deseas hacer?</p>
+      <button id="showLogin">🔐 INICIAR SESIÓN</button>
+      <button id="showRegister">📝 CREAR CUENTA</button>
+      <div class="small">Tu cuenta se guarda de forma segura en Firebase Authentication.</div>
     </div>
+    <div id="loginForm" class="auth-menu"><h2>🔐 INICIAR SESIÓN</h2><input id="loginEmail" type="email" placeholder="Correo electrónico" autocomplete="email"><div class="password-wrap"><input id="loginPassword" type="password" placeholder="Contraseña" autocomplete="current-password"><button type="button" class="eye-btn" id="eyeLogin">👁️</button></div><button id="login">ENTRAR A LA BATALLA</button><button id="backLogin" class="auth-back">← VOLVER</button></div>
+    <div id="registerForm" class="auth-menu"><h2>📝 CREAR CUENTA</h2><input id="registerName" type="text" placeholder="Nombre de jugador" autocomplete="name"><input id="registerEmail" type="email" placeholder="Correo electrónico" autocomplete="email"><div class="password-wrap"><input id="registerPassword" type="password" placeholder="Contraseña (mín. 6 caracteres)" autocomplete="new-password"><button type="button" class="eye-btn" id="eyeRegister">👁️</button></div><div class="password-wrap"><input id="registerPassword2" type="password" placeholder="Repite la contraseña" autocomplete="new-password"><button type="button" class="eye-btn" id="eyeRegister2">👁️</button></div><div id="passwordCheck" class="password-check"></div><button id="register">CREAR CUENTA</button><button id="backRegister" class="auth-back">← VOLVER</button></div>
+    <div id="userBox"><h2>👤 CUENTA</h2><div>Conectado como <span id="userEmail"></span></div><button id="logout">CERRAR SESIÓN</button></div>
+    <div id="authStatus"></div>
+  </section>
 
-    <div class="settings-row">
-      <div>
-        <div class="settings-label">📧 Correo electrónico</div>
-        <div class="settings-help">Actualiza el correo asociado a tu cuenta.</div>
-      </div>
-      <button class="settings-action" id="changeEmailBtn">Cambiar</button>
-    </div>
+  <section id="home" class="tab-section active">
+    <div class="hero home-hero"><div class="hero-content"><div class="eyebrow">⚡ SISTEMA AURA ONLINE</div><h1>SESIÓN INICIADA</h1><p>Bienvenido a AURA BATTLE. Tu cuenta está lista para entrar al campo de batalla.</p><div class="home-status">🟢 CONECTADO <span id="homeName">Jugador</span></div></div></div>
+  </section>
 
-    <div class="settings-row">
-      <div>
-        <div class="settings-label">🔑 Contraseña</div>
-        <div class="settings-help">Cambia tu contraseña de acceso.</div>
-      </div>
-      <button class="settings-action" id="changePasswordBtn">Cambiar</button>
-    </div>
-  </div>
+  <section id="profileCard" class="tab-section"><div class="section-title"><span>👤</span><div><h2>MI PERFIL</h2><p>Tu identidad y estadísticas de combate.</p></div></div><div class="profile-hero"><div class="profile-avatar">⚡</div><div><h2 id="profileName">Cargando...</h2><div class="rank-label">GUERRERO AURA</div></div></div><div class="profile-grid"><div class="profile-stat">⚡ AURA<b id="profileAura">0</b></div><div class="profile-stat">🏆 VICTORIAS<b id="profileWins">0</b></div><div class="profile-stat">❌ DERROTAS<b id="profileLosses">0</b></div></div><button id="refreshProfile" class="wide-btn">🔄 ACTUALIZAR PERFIL</button></section>
 
-  <div class="card-modern">
-    <h3>🛡️ Seguridad</h3>
-    <p class="settings-help">Para cambios sensibles, Firebase puede solicitar que vuelvas a autenticarte.</p>
-    <button id="logoutSettings">Cerrar sesión</button>
-  </div>
+  <section id="socialCard" class="tab-section"><div class="section-title"><span>👥</span><div><h2>AMIGOS</h2><p>Encuentra guerreros y crea tu equipo.</p></div></div><div class="card-modern"><input id="playerSearch" type="text" placeholder="🔎 Buscar jugador"><button id="searchPlayers">BUSCAR</button><div id="socialMsg" class="social-msg"></div><div id="searchResults"></div></div><div class="card-modern"><h3>🤝 SOLICITUDES RECIBIDAS</h3><div id="friendRequests">No hay solicitudes nuevas.</div></div></section>
 
-  <div class="card-modern">
-    <h3>©️ AURA BATTLE</h3>
-    <p class="legal">© 2026 AURA BATTLE — Todos los derechos reservados.<br>
-    El nombre, diseño, concepto y contenido original de AURA BATTLE pertenecen a sus respectivos titulares.</p>
-  </div>
-</section>
+  <section id="chatCard" class="tab-section"><div class="section-title"><span>💬</span><div><h2>CHAT</h2><p>Comunícate con otros jugadores.</p></div></div><div class="chat-empty card-modern"><div class="big-icon">💬</div><h2>CHAT DE BATALLA</h2><p>El sistema de chat privado será activado en el siguiente módulo.</p><span class="coming">PRÓXIMAMENTE</span></div></section>
 
-<section id="app" class="tab-section">
-<p>Crea una sala y comparte el código con tu rival.</p>
-<div><button id="create">CREAR SALA</button><input id="room" placeholder="CÓDIGO" maxlength="6"><button id="join">UNIRME</button></div>
-<div><button id="cam">📷 ACTIVAR CÁMARA</button><button id="battle" disabled>🔥 INICIAR BATALLA</button></div>
-<h2 id="code"></h2><div id="status">Listo.</div>
-<div class="videos">
-<div class="card"><h2>Jugador 1</h2><div class="aura-box" id="box1"><video id="local" autoplay playsinline muted></video></div><div class="score" id="score1">Aura: 0</div><div class="bar"><div class="fill" id="fill1"></div></div></div>
-<div class="card"><h2>Jugador 2</h2><div class="aura-box" id="box2"><video id="remote" autoplay playsinline></video></div><div class="score" id="score2">Aura: 0</div><div class="bar"><div class="fill" id="fill2"></div></div></div>
-</div>
-</section>
-</div>
+  <section id="battleSection" class="tab-section"><div class="section-title"><span>⚔️</span><div><h2>BATALLAS</h2><p>Entra al campo y enfrenta a tu rival.</p></div></div><div class="hero battle-hero"><div class="hero-content"><h2>ENFRENTA. DEMUESTRA. EVOLUCIONA.</h2><p>Comparte el código de sala y conecta las dos cámaras.</p></div></div><div id="app" class="battle-panel"><p class="battle-instruction">Crea una sala y comparte el código con tu rival.</p><div class="room-controls"><button id="create">CREAR SALA</button><input id="room" placeholder="CÓDIGO" maxlength="6"><button id="join">UNIRME</button></div><div class="cam-controls"><button id="cam">📷 ACTIVAR CÁMARA</button><button id="battle" disabled>🔥 INICIAR BATALLA</button></div><h2 id="code"></h2><div id="status">Listo.</div><div class="videos"><div class="card"><h2>JUGADOR 1</h2><div class="aura-box" id="box1"><video id="local" autoplay playsinline muted></video></div><div class="score" id="score1">Aura: 0</div><div class="bar"><div class="fill" id="fill1"></div></div></div><div class="card"><h2>JUGADOR 2</h2><div class="aura-box" id="box2"><video id="remote" autoplay playsinline></video></div><div class="score" id="score2">Aura: 0</div><div class="bar"><div class="fill" id="fill2"></div></div></div></div></div></section>
 
+  <section id="rankingCard" class="tab-section"><div class="section-title"><span>🏆</span><div><h2>RANKING</h2><p>Los guerreros con mayor poder Aura.</p></div></div><div class="card-modern ranking-placeholder"><div class="podium">🥈 &nbsp; 🥇 &nbsp; 🥉</div><h2>CLASIFICACIÓN GLOBAL</h2><p>El ranking se activará cuando comencemos a registrar los resultados de las batallas.</p><span class="coming">PRÓXIMAMENTE</span></div></section>
+
+  <section id="leagueCard" class="tab-section"><div class="section-title"><span>🥇</span><div><h2>LIGA</h2><p>Sube de rango y conquista la temporada.</p></div></div><div class="league-banner"><div><h1>LIGA VALDORIA</h1><p>TEMPORADA 1</p><div class="league-rank">🛡️ BRONCE I</div></div></div><div class="card-modern"><h3>⚔️ SISTEMA DE LIGAS</h3><p>Gana batallas para subir de rango, desbloquear recompensas y demostrar tu poder.</p><span class="coming">PRÓXIMAMENTE</span></div></section>
+
+  <section id="settingsCard" class="tab-section"><div class="section-title"><span>⚙️</span><div><h2>AJUSTES</h2><p>Personaliza y protege tu cuenta.</p></div></div><div class="card-modern"><h3>👤 CUENTA</h3><div class="settings-row"><div><b>Nombre para mostrar</b><small>Cambia el nombre que ven otros jugadores.</small></div><button id="changeNameBtn">CAMBIAR</button></div><div class="settings-row"><div><b>📧 Correo electrónico</b><small>Actualiza el correo de acceso.</small></div><button id="changeEmailBtn">CAMBIAR</button></div><div class="settings-row"><div><b>🔑 Contraseña</b><small>Cambia tu contraseña.</small></div><button id="changePasswordBtn">CAMBIAR</button></div></div><div class="card-modern"><h3>🛡️ SEGURIDAD</h3><button id="logoutSettings" class="danger-btn">CERRAR SESIÓN</button></div><div class="legal">© 2026 AURA BATTLE — Todos los derechos reservados.</div></section>
+</main>
 <script src="/socket.io/socket.io.js"></script>
 
 <!-- Firebase -->
@@ -353,6 +262,8 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
+
+function setLoggedUI(isLogged){document.body.classList.toggle("logged",!!isLogged); if(!isLogged){document.getElementById("mainNav").classList.remove("open");document.getElementById("drawerOverlay").classList.remove("open");}}
 
 const $=id=>document.getElementById(id);
 function authStatus(t){$("authStatus").textContent=t}
@@ -601,7 +512,7 @@ function showTab(tabId){
   }
 }
 document.querySelectorAll(".tab-btn").forEach(btn=>{
-  btn.onclick=()=>showTab(btn.dataset.tab);
+  btn.onclick=()=>{showTab(btn.dataset.tab); closeMenu();};
 });
 
 async function searchPlayers(){
@@ -718,6 +629,7 @@ $("playerSearch").addEventListener("keydown",e=>{if(e.key==="Enter")searchPlayer
 
 auth.onAuthStateChanged(async user=>{
   if(user){
+    setLoggedUI(true);
     $("authChoice").style.display="none";
     $("mainNav").style.display="block";
     showTab("home");
@@ -725,6 +637,9 @@ auth.onAuthStateChanged(async user=>{
     $("registerForm").style.display="none";
     $("userBox").style.display="block";
     $("userEmail").textContent=user.displayName ? user.displayName+" ("+user.email+")" : user.email;
+    $("miniName").textContent=user.displayName||"Jugador";
+    $("miniEmail").textContent=user.email||"";
+    $("homeName").textContent=user.displayName||"Jugador";
     $("app").style.display="block";
     $("profileCard").style.display="block";
     loadProfile(user);
@@ -755,6 +670,7 @@ auth.onAuthStateChanged(async user=>{
       authStatus("⚠️ Cuenta iniciada, pero el perfil de Firestore aún no pudo guardarse. Revisa las reglas de Firestore.");
     }
   }else{
+    setLoggedUI(false);
     $("authChoice").style.display="block";
     $("mainNav").style.display="none";
     $("loginForm").style.display="none";
@@ -766,6 +682,13 @@ auth.onAuthStateChanged(async user=>{
 });
 </script>
 
+<script>
+const drawer=document.getElementById("mainNav"), overlay=document.getElementById("drawerOverlay");
+function openMenu(){drawer.classList.add("open");overlay.classList.add("open")}
+function closeMenu(){drawer.classList.remove("open");overlay.classList.remove("open")}
+document.getElementById("menuToggle").onclick=openMenu;document.getElementById("topMenu").onclick=openMenu;document.getElementById("closeMenu").onclick=closeMenu;overlay.onclick=closeMenu;
+const oldShowTab=window.showTab;
+</script>
 <script>
 const ioClient=io();let pc=null,stream=null,roomCode=null,isHost=false,pendingOffer=null,pendingCandidates=[],battleStarted=false;
 function status(t){$("status").textContent=t}
@@ -823,5 +746,4 @@ function runBattle(){
 $("battle").onclick=()=>{if(!roomCode)return;ioClient.emit("start")};
 ioClient.on("start",runBattle);
 </script>
-</body>
-</html>
+</body></html>
