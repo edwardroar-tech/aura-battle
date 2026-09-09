@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode, RefObject } from 'react'
 import { auth, db } from './lib/firebase'
 import { socket } from './lib/socket'
-import { createUserWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut, updateProfile } from 'firebase/auth'
+import { createUserWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut, updateProfile } from 'firebase/auth'
 import { addDoc, collection, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, arrayUnion, startAt, endAt, where } from 'firebase/firestore'
 
 type Lang = 'es'|'en'|'pt'|'fr'|'de'|'it'|'tr'|'ja'|'ko'|'zh'
@@ -87,7 +87,13 @@ export default function App(){
 
    // Recupera explícitamente el resultado del inicio de sesión con Google
    // después de volver a AURA BATTLE desde la página de Google/Firebase.
-   getRedirectResult(auth).catch((e:any)=>{
+   getRedirectResult(auth).then((result)=>{
+     if(result?.user){
+       setUser(result.user)
+       setAuthMode('choice')
+       setAuthMsg('')
+     }
+   }).catch((e:any)=>{
      console.error('Google redirect result error:',e)
      if(e?.code){
        setAuthMsg(e.message?.replace('Firebase: Error (auth/','').replace(').','')||'No se pudo completar el inicio de sesión con Google.')
@@ -212,7 +218,7 @@ useEffect(()=>{if(!cameraOn||!videoRef.current)return; const v=videoRef.current;
 
  async function handleAuth(e:FormEvent){e.preventDefault();setAuthMsg('');try{if(authMode==='register'){if(name.trim().length<2)return setAuthMsg('Escribe un nombre de jugador.');if(password!==password2)return setAuthMsg('Las contraseñas no coinciden.');if(password.length<6)return setAuthMsg('La contraseña debe tener al menos 6 caracteres.');const c=await createUserWithEmailAndPassword(auth,email,password);const clean=name.trim();await updateProfile(c.user,{displayName:clean});await setDoc(doc(db,'users',c.user.uid),{uid:c.user.uid,nombre:clean,nombreLower:clean.toLowerCase(),email,aura:0,victorias:0,derrotas:0,level:1,createdAt:serverTimestamp()},{merge:true})}else await signInWithEmailAndPassword(auth,email,password)}catch(e:any){setAuthMsg(e?.message?.replace('Firebase: Error (auth/','').replace(').','')||'No se pudo completar la operación.')}}
  async function resetPassword(){if(!email.trim()){setAuthMsg('Escribe tu correo para recuperar la contraseña.');return}try{await sendPasswordResetEmail(auth,email.trim());setResetSent(true);setAuthMsg('Te enviamos un enlace para restablecer tu contraseña.')}catch(e:any){setAuthMsg('No pudimos enviar el enlace de recuperación. Revisa el correo.')}}
- async function loginWithGoogle(){setAuthMsg('');try{const provider=new GoogleAuthProvider();provider.setCustomParameters({prompt:'select_account'});await signInWithRedirect(auth,provider)}catch(e:any){console.error('Google sign-in error:',e);setAuthMsg(e?.message?.replace('Firebase: Error (auth/','').replace(').','')||'No se pudo iniciar sesión con Google.')}}
+ async function loginWithGoogle(){setAuthMsg('');try{const provider=new GoogleAuthProvider();provider.setCustomParameters({prompt:'select_account'});const result=await signInWithPopup(auth,provider);setUser(result.user);setAuthMode('choice');setAuthMsg('')}catch(e:any){console.error('Google sign-in error:',e);setAuthMsg(e?.message?.replace('Firebase: Error (auth/','').replace(').','')||'No se pudo iniciar sesión con Google.')}}
  async function finishBattle(){if(!user||!battleStarted)return;socket.emit('finish-battle');setRoomStatus('⏳ Finalizando la batalla…')}
  async function logout(){localStreamRef.current?.getTracks().forEach(x=>x.stop());peerRef.current?.close();await signOut(auth);socket.disconnect();navigateTab('home')}
  async function resetPeer(){pendingIceRef.current=[]; if(peerRef.current){peerRef.current.ontrack=null;peerRef.current.onicecandidate=null;peerRef.current.close();peerRef.current=null} setBothCamerasReady(false);setBattleStarted(false);setBattleSeconds(0);setOpponentAura(0)}
