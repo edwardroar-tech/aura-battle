@@ -381,3 +381,11 @@ button,input,select{border-radius:14px}
 .score-vs{font-weight:1000;color:#8c7fff}
 .result-home-btn{min-width:220px;padding:15px 24px!important}
 @media(max-width:520px){.battle-result-card{padding:26px 14px}.battle-result-card h2{font-size:35px}.battle-scoreboard{grid-template-columns:1fr 42px 1fr;gap:6px}.battle-scoreboard strong{font-size:25px}.battle-scoreboard>div:not(.score-vs){padding:16px 7px}.result-home-btn{width:100%}}
+
+
+.friend-requests{margin:14px 0 18px;padding:12px;border:1px solid rgba(139,92,246,.35);border-radius:16px;background:rgba(99,60,180,.08)}
+.friend-request-row{margin-top:8px;border-color:rgba(139,92,246,.28)}
+.friend-request-row span{flex:1;min-width:0}
+.friend-request-row strong{display:block}
+.request-actions{margin-left:auto;gap:6px}
+.request-actions button{white-space:nowrap}
