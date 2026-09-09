@@ -1,8 +1,8 @@
-# AURA BATTLE V5.152
+# AURA BATTLE V5.153
 
 AURA BATTLE es una arena 1v1 con cámara, WebRTC, Socket.IO, Firebase y análisis local de movimiento con MediaPipe Pose.
 
-## Cambios de V5.152
+## Cambios de V5.153
 - 🧠 IA Aura: entrenamiento de 15 segundos con medidor de Aura en tiempo real.
 - ⚡ Cada entrenamiento completado otorga +1 Aura y actualiza el perfil en Firestore.
 - 🛡️ Filtro local de seguridad visual en batallas con NSFWJS/TensorFlow.js. Si detecta con alta confianza contenido sexual potencialmente no permitido, se apaga la cámara local y se cancela la batalla para ambos.
