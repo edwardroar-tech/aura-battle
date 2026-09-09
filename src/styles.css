@@ -444,3 +444,7 @@ button,input,select{border-radius:14px}
 .notification-battle-actions{display:flex;gap:7px}
 .notification-battle-actions button{flex:1;padding:9px 8px!important;font-size:12px!important}
 @media(max-width:520px){.private-chat-head{align-items:flex-start}.battle-invite-btn{width:100%;margin-top:3px}.notification-battle-actions button{min-width:0}}
+
+/* V5.158 - chat readability */
+.bubble strong{margin-right:4px}
+.bubble span{white-space:pre-wrap;overflow-wrap:anywhere}

@@ -1,4 +1,4 @@
-# AURA BATTLE V5.157
+# AURA BATTLE V5.158
 
 AURA BATTLE es una arena 1v1 con cámara, WebRTC, Socket.IO, Firebase y análisis local de movimiento con MediaPipe Pose.
 
@@ -21,7 +21,7 @@ La detección automática de contenido es una medida de seguridad y puede equivo
 - Start: `npm start`
 - Node: >=20
 
-## Cambios de V5.157
+## Cambios de V5.158
 - 🔔 Campana de notificaciones visible en Inicio.
 - 💬 Muestra solicitudes de amistad y mensajes privados nuevos.
 - 🔢 Badge con contador de notificaciones pendientes.
@@ -29,7 +29,7 @@ La detección automática de contenido es una medida de seguridad y puede equivo
 - 👁️ Al abrir un chat privado, sus mensajes pendientes se marcan como vistos en ese dispositivo.
 
 
-### v5.157
+### v5.158
 - Botón «⚔️ Invitar a batalla» dentro del chat privado de amigos.
 - El invitado recibe la invitación en Notificaciones.
 - Al aceptar, entra directamente a la sala sin introducir código.
