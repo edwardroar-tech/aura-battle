@@ -3,7 +3,7 @@ import type { FormEvent, ReactNode, RefObject } from 'react'
 import { auth, db } from './lib/firebase'
 import { socket } from './lib/socket'
 import { createUserWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword, signOut, updateProfile } from 'firebase/auth'
-import { addDoc, collection, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, arrayUnion, startAt, endAt } from 'firebase/firestore'
+import { addDoc, collection, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, arrayUnion, startAt, endAt, where } from 'firebase/firestore'
 
 type Lang = 'es'|'en'|'pt'|'fr'|'de'|'it'|'tr'|'ja'|'ko'|'zh'
 type Tab = 'home'|'profile'|'friends'|'chat'|'battle'|'ai'|'ranking'|'league'|'clans'|'premium'|'settings'
@@ -31,12 +31,12 @@ export default function App(){
  const [user,setUser]=useState(auth.currentUser); const [authMode,setAuthMode]=useState<'choice'|'login'|'register'>('choice'); const [lang,setLang]=useState<Lang>('es')
  const [email,setEmail]=useState(''); const [password,setPassword]=useState(''); const [password2,setPassword2]=useState(''); const [name,setName]=useState(''); const [authMsg,setAuthMsg]=useState('')
  const [tab,setTab]=useState<Tab>('home'); const [profile,setProfile]=useState({aura:0,wins:0,losses:0,level:1})
- const [friendSearch,setFriendSearch]=useState(''); const [friends,setFriends]=useState<Friend[]>([]); const [friendResults,setFriendResults]=useState<Friend[]>([])
- const [chat,setChat]=useState<ChatMsg[]>([]); const [chatInput,setChatInput]=useState(''); const [chatLoading,setChatLoading]=useState(false); const [chatMsg,setChatMsg]=useState('')
+ const [friendSearch,setFriendSearch]=useState(''); const [friends,setFriends]=useState<Friend[]>([]); const [friendResults,setFriendResults]=useState<Friend[]>([]); const [friendMsg,setFriendMsg]=useState(''); const [friendSearching,setFriendSearching]=useState(false)
+ const [chat,setChat]=useState<ChatMsg[]>([]); const [chatInput,setChatInput]=useState(''); const [chatLoading,setChatLoading]=useState(false); const [chatMsg,setChatMsg]=useState(''); const [privateFriend,setPrivateFriend]=useState<Friend|null>(null); const [privateChat,setPrivateChat]=useState<ChatMsg[]>([]); const [privateInput,setPrivateInput]=useState(''); const [privateLoading,setPrivateLoading]=useState(false); const [privateMsg,setPrivateMsg]=useState('')
  const [leaders,setLeaders]=useState<Friend[]>([]); const [clans,setClans]=useState<Clan[]>([]); const [clanName,setClanName]=useState(''); const [clanMsg,setClanMsg]=useState('')
  const [premium,setPremium]=useState(false); const [musicOn,setMusicOn]=useState(true); const [mobileMore,setMobileMore]=useState(false); const [resetSent,setResetSent]=useState(false); const [theme,setTheme]=useState<'neon'|'midnight'>('neon')
  const [room,setRoom]=useState(''); const [roomCode,setRoomCode]=useState(''); const [roomStatus,setRoomStatus]=useState('Listo.'); const [opponentJoined,setOpponentJoined]=useState(false); const [bothCamerasReady,setBothCamerasReady]=useState(false); const [host,setHost]=useState(false); const [cameraOn,setCameraOn]=useState(false); const [battleStarted,setBattleStarted]=useState(false); const [battleSeconds,setBattleSeconds]=useState(0); const [aura,setAura]=useState(0); const [opponentAura,setOpponentAura]=useState(0); const [online,setOnline]=useState(0)
- const hostRef=useRef(false); const videoRef=useRef<HTMLVideoElement>(null); const aiVideoRef=useRef<HTMLVideoElement>(null); const battleMusicRef=useRef<HTMLAudioElement>(null); const remoteVideoRef=useRef<HTMLVideoElement>(null); const localStreamRef=useRef<MediaStream|null>(null); const peerRef=useRef<RTCPeerConnection|null>(null); const pendingIceRef=useRef<RTCIceCandidateInit[]>([]); const canvasRef=useRef<HTMLCanvasElement|null>(null)
+ const hostRef=useRef(false); const cameraSourceRef=useRef<'ai'|'battle'|null>(null); const videoRef=useRef<HTMLVideoElement>(null); const aiVideoRef=useRef<HTMLVideoElement>(null); const battleMusicRef=useRef<HTMLAudioElement>(null); const remoteVideoRef=useRef<HTMLVideoElement>(null); const localStreamRef=useRef<MediaStream|null>(null); const peerRef=useRef<RTCPeerConnection|null>(null); const pendingIceRef=useRef<RTCIceCandidateInit[]>([]); const canvasRef=useRef<HTMLCanvasElement|null>(null)
  const t=copy[lang]
 
  // Mantiene la navegación interna de la app sincronizada con el botón Atrás
@@ -61,7 +61,7 @@ export default function App(){
    return()=>window.removeEventListener('popstate',onPopState)
  },[])
 
- useEffect(()=>onAuthStateChanged(auth,async u=>{setUser(u); if(!u)return; setAuthMode('choice'); const snap=await getDoc(doc(db,'users',u.uid)); if(snap.exists()){const d=snap.data(); setProfile({aura:Number(d.aura||0),wins:Number(d.victorias||0),losses:Number(d.derrotas||0),level:Number(d.level||1)});} else await setDoc(doc(db,'users',u.uid),{uid:u.uid,nombre:u.displayName||'Jugador',nombreLower:(u.displayName||'Jugador').toLowerCase(),email:u.email||'',aura:0,victorias:0,derrotas:0,level:1,createdAt:serverTimestamp()},{merge:true})}),[])
+ useEffect(()=>onAuthStateChanged(auth,async u=>{setUser(u);setPrivateFriend(null);setPrivateChat([]);if(!u){setFriends([]);return;}setAuthMode('choice');const snap=await getDoc(doc(db,'users',u.uid));if(snap.exists()){const d=snap.data();setProfile({aura:Number(d.aura||0),wins:Number(d.victorias||0),losses:Number(d.derrotas||0),level:Number(d.level||1)});const ids=Array.isArray(d.friends)?d.friends:[];const profiles=await Promise.all(ids.map(async(id:string)=>{try{const fs=await getDoc(doc(db,'users',id));if(!fs.exists())return null;const x=fs.data();return{id,name:String(x.nombre||x.name||x.displayName||'Jugador'),aura:Number(x.aura||0)} as Friend}catch{return null}}));setFriends(profiles.filter(Boolean) as Friend[]);}else{await setDoc(doc(db,'users',u.uid),{uid:u.uid,nombre:u.displayName||'Jugador',nombreLower:(u.displayName||'Jugador').toLowerCase(),email:u.email||'',aura:0,victorias:0,derrotas:0,level:1,friends:[],createdAt:serverTimestamp()},{merge:true});setFriends([])}}),[])
 
  useEffect(()=>{ if(!user)return; setChatLoading(true); setChatMsg(''); const q=query(collection(db,'chat'),orderBy('createdAt','desc'),limit(60)); return onSnapshot(q,s=>{setChat(s.docs.map(d=>({id:d.id,...d.data()} as ChatMsg)).reverse());setChatLoading(false)},e=>{console.error('Global chat load error:',e);setChatLoading(false);setChatMsg('⚠️ No se pudo cargar el chat global.')}) },[user])
  useEffect(()=>{ if(!user)return; const q=query(collection(db,'users'),orderBy('aura','desc'),limit(25)); return onSnapshot(q,s=>setLeaders(s.docs.map(d=>{const x=d.data(); return {id:d.id,name:x.nombre||'Jugador',aura:Number(x.aura||0)}}))) },[user])
@@ -147,7 +147,25 @@ export default function App(){
   else { audio.pause(); if(!battleStarted) audio.currentTime=0; }
 },[battleStarted,musicOn])
 
-useEffect(()=>{if(!cameraOn||tab!=='ai'||!aiVideoRef.current||!localStreamRef.current)return; const v=aiVideoRef.current; v.srcObject=localStreamRef.current; v.muted=true; v.playsInline=true; void v.play().catch(()=>{});},[cameraOn,tab])
+useEffect(()=>{
+  if(!cameraOn||tab!=='ai'||!aiVideoRef.current||!localStreamRef.current)return;
+  const v=aiVideoRef.current;
+  v.srcObject=localStreamRef.current; v.muted=true; v.playsInline=true; void v.play().catch(()=>{});
+},[cameraOn,tab])
+
+useEffect(()=>{
+  if(tab==='ai') return;
+  // If the camera was activated only for IA Aura, release it when leaving the tab.
+  if(cameraSourceRef.current==='ai' && localStreamRef.current){
+    localStreamRef.current.getTracks().forEach(track=>track.stop());
+    localStreamRef.current=null;
+    if(aiVideoRef.current) aiVideoRef.current.srcObject=null;
+    if(videoRef.current) videoRef.current.srcObject=null;
+    cameraSourceRef.current=null;
+    setCameraOn(false);
+    setAura(0);
+  }
+},[tab])
 
 useEffect(()=>{
   if(!battleStarted)return
@@ -214,7 +232,7 @@ useEffect(()=>{if(!cameraOn||!videoRef.current)return; const v=videoRef.current;
  async function startCamera(){
    try{
      if(!navigator.mediaDevices?.getUserMedia){setRoomStatus('Este navegador no permite usar la cámara. Abre AURA BATTLE con HTTPS en Chrome o Safari.');return}
-     if(localStreamRef.current){attachLocalStream(localStreamRef.current);setCameraOn(true);if(!socket.connected)socket.connect();socket.emit('camera-ready');return}
+     if(localStreamRef.current){cameraSourceRef.current=tab==='ai'?'ai':'battle';attachLocalStream(localStreamRef.current);setCameraOn(true);if(!socket.connected)socket.connect();socket.emit('camera-ready');return}
      setRoomStatus('Solicitando acceso a cámara y micrófono…')
      const videoConstraints={facingMode:{ideal:'user'},width:{ideal:1280},height:{ideal:720},frameRate:{ideal:30,max:30}}
      let s:MediaStream
@@ -236,6 +254,7 @@ useEffect(()=>{if(!cameraOn||!videoRef.current)return; const v=videoRef.current;
          }
        }
      }
+     cameraSourceRef.current=tab==='ai'?'ai':'battle'
      attachLocalStream(s)
      setCameraOn(true)
      if(!socket.connected)socket.connect()
@@ -260,22 +279,48 @@ useEffect(()=>{if(!cameraOn||!videoRef.current)return; const v=videoRef.current;
  async function sendChat(e:FormEvent){e.preventDefault();const text=chatInput.trim();if(!text||!user)return;setChatMsg('');setChatInput('');try{await addDoc(collection(db,'chat'),{uid:user.uid,name:user.displayName||'Jugador',text,createdAt:serverTimestamp()})}catch(error){console.error('Global chat send error:',error);setChatInput(text);setChatMsg('⚠️ No se pudo enviar el mensaje. Revisa tu conexión e inicia sesión de nuevo si es necesario.')}}
  async function searchFriends(){
   const term=friendSearch.trim().toLowerCase().replace(/\s+/g,' ')
-  if(!term){setFriendResults([]);return}
+  setFriendMsg('')
+  setFriendResults([])
+  if(!term){setFriendMsg('Escribe el nombre del jugador que quieres buscar.');return}
+  if(!user){setFriendMsg('⚠️ Debes iniciar sesión para buscar jugadores.');return}
+  setFriendSearching(true)
   try{
-    // Buscar por nombreLower en Firestore; ya no dependemos de los primeros 50 usuarios.
-    const snap=await getDocs(query(collection(db,'users'),orderBy('nombreLower'),startAt(term),endAt(term+'\uf8ff'),limit(20)))
+    const snap=await getDocs(collection(db,'users'))
     const results=snap.docs
-      .filter(d=>d.id!==user?.uid)
-      .map(d=>{const x=d.data();return{id:d.id,name:String(x.nombre||'Jugador'),aura:Number(x.aura||0)}})
-      .filter(x=>x.name.toLowerCase().includes(term))
-      .slice(0,10)
-    setFriendResults(results)
-  }catch(error){
+      .filter(d=>d.id!==user.uid)
+      .map(d=>{
+        const x=d.data() as any
+        const name=String(x.nombre||x.name||x.displayName||'Jugador')
+        const email=String(x.email||'')
+        const lower=String(x.nombreLower||name).toLowerCase().replace(/\s+/g,' ')
+        return{id:d.id,name,aura:Number(x.aura||0),email,lower}
+      })
+      .filter(x=>x.lower.includes(term)||x.name.toLowerCase().replace(/\s+/g,' ').includes(term)||x.email.toLowerCase().includes(term))
+      .slice(0,20)
+    setFriendResults(results.map(({id,name,aura})=>({id,name,aura})))
+    setFriendMsg(results.length?`✅ ${results.length} jugador(es) encontrado(s).`:`🔎 No encontramos jugadores con “${friendSearch.trim()}”.`)
+  }catch(error:any){
     console.error('Friend search error:',error)
-    setFriendResults([])
+    setFriendMsg(`❌ Error al buscar: ${error?.code||error?.message||'permiso o conexión'}`)
+  }finally{
+    setFriendSearching(false)
   }
-}
- async function addFriend(f:Friend){if(!user)return;await updateDoc(doc(db,'users',user.uid),{friends:arrayUnion(f.id)});setFriends(v=>v.some(x=>x.id===f.id)?v:[...v,f])}
+ }
+ async function addFriend(f:Friend){
+  if(!user)return
+  try{
+    await updateDoc(doc(db,'users',user.uid),{friends:arrayUnion(f.id)})
+    setFriends(v=>v.some(x=>x.id===f.id)?v:[...v,f])
+    setFriendMsg(`🤝 ${f.name} fue añadido a tus amigos.`)
+  }catch(error){
+    console.error('Add friend error:',error)
+    setFriendMsg('❌ No se pudo añadir este jugador. Revisa los permisos de Firebase.')
+  }
+ }
+ const conversationId=(a:string,b:string)=>[a,b].sort().join('_')
+ function openPrivateChat(f:Friend){setPrivateFriend(f);setPrivateInput('');setPrivateMsg('');navigateTab('chat')}
+ useEffect(()=>{if(!user||!privateFriend){setPrivateChat([]);return}setPrivateLoading(true);setPrivateMsg('');const cid=conversationId(user.uid,privateFriend.id);const q=query(collection(db,'privateChats'),where('conversationId','==',cid),limit(100));return onSnapshot(q,s=>{const rows=s.docs.map(d=>({id:d.id,...d.data()} as ChatMsg));rows.sort((a,b)=>(a.createdAt?.seconds||0)-(b.createdAt?.seconds||0));setPrivateChat(rows);setPrivateLoading(false)},e=>{console.error('Private chat load error:',e);setPrivateLoading(false);setPrivateMsg('⚠️ No se pudo cargar el chat con este amigo.')})},[user,privateFriend])
+ async function sendPrivateChat(e:FormEvent){e.preventDefault();const text=privateInput.trim();if(!text||!user||!privateFriend)return;setPrivateMsg('');setPrivateInput('');try{await addDoc(collection(db,'privateChats'),{uid:user.uid,name:user.displayName||'Jugador',text,conversationId:conversationId(user.uid,privateFriend.id),participants:[user.uid,privateFriend.id],createdAt:serverTimestamp()})}catch(error){console.error('Private chat send error:',error);setPrivateInput(text);setPrivateMsg('⚠️ No se pudo enviar el mensaje. Revisa tu conexión.')}}
  async function createClan(){
   const name=clanName.trim()
   if(!user)return
@@ -298,10 +343,10 @@ useEffect(()=>{if(!cameraOn||!videoRef.current)return; const v=videoRef.current;
  <main className="content">
  {tab==='home'&&<section className="home-hero"><div className="hero-copy"><div className="eyebrow">⚡ ONLINE AURA ARENA</div><h1>{t.welcome}</h1><p>Compite en vivo, gana Aura y construye tu reputación.</p><div className="hero-actions"><button className="primary" onClick={()=>navigateTab('battle')}>⚔️ {t.play}</button><button onClick={()=>navigateTab('profile')}>👤 Mi perfil</button></div><div className="quick-stats"><Stat label="⚡ Tu Aura" value={profile.aura}/><Stat label="🏆 Victorias" value={profile.wins}/><Stat label="🔥 Nivel" value={profile.level}/></div></div><div className="hero-art"><img src="/assets/aura-arena-home.png" alt="AURA BATTLE Arena"/><div className="hero-glow">LIVE</div></div><div className="home-grid"><Card icon="⚔️" title="Batallas 1v1" text="Crea una sala y reta a otra persona con cámara." action={()=>navigateTab('battle')}/><Card icon="🤖" title="IA Aura" text="Convierte señales visuales de tu cámara en una métrica de Aura." action={()=>navigateTab('ai')}/><Card icon="🏆" title="Ranking global" text="Sube posiciones con tus victorias y puntuación." action={()=>navigateTab('ranking')}/><Card icon="🛡️" title="Clanes" text="Forma equipos y crea una comunidad alrededor de tu Aura." action={()=>navigateTab('clans')}/></div><div className="ad-slot banner-ad">ESPACIO PUBLICITARIO · AURA BATTLE</div></section>}
  {tab==='profile'&&<Panel title="👤 Mi perfil"><div className="profile-head"><div className="big-profile-icon">⚡</div><div><h2>{user.displayName||'Jugador'}</h2><p>{user.email}</p><span className="badge">Nivel {profile.level}</span></div></div><div className="stats"><Stat label="Aura" value={profile.aura}/><Stat label="Victorias" value={profile.wins}/><Stat label="Derrotas" value={profile.losses}/><Stat label="Ratio" value={`${profile.wins+profile.losses?Math.round(profile.wins/(profile.wins+profile.losses)*100):0}%`}/></div><div className="profile-actions"><button className="primary" onClick={()=>navigateTab('battle')}>⚔️ Ir a batallar</button><button onClick={()=>navigateTab('settings')}>⚙️ Ajustes</button></div></Panel>}
- {tab==='friends'&&<Panel title="👥 Amigos"><p>Encuentra jugadores y añade rivales a tu red.</p><div className="inline"><input placeholder="Nombre del jugador" value={friendSearch} onChange={e=>setFriendSearch(e.target.value)} onKeyDown={e=>e.key==='Enter'&&searchFriends()}/><button onClick={searchFriends}>🔎 Buscar</button></div>{friendResults.length>0&&<div className="list">{friendResults.map(f=><div className="list-row" key={f.id}>🧑 <span>{f.name}<small>⚡ {f.aura}</small></span><button onClick={()=>addFriend(f)}>＋ Añadir</button></div>)}</div>}<div className="section-title">Mis amigos</div><div className="list">{friends.length?friends.map(f=><div className="list-row" key={f.id}>🟢 {f.name}<span>⚡ {f.aura}</span></div>):<div className="empty">Todavía no tienes amigos. Busca un jugador arriba.</div>}</div></Panel>}
- {tab==='chat'&&<Panel title="💬 Chat global"><div className="chat-box">{chat.length?chat.map(m=><div className={m.uid===user.uid?'bubble mine':'bubble'} key={m.id}><strong>{m.name}</strong><span>{m.text}</span></div>):<div className="empty">Sé la primera persona en escribir.</div>}</div><form className="inline" onSubmit={sendChat}><input maxLength={300} value={chatInput} onChange={e=>setChatInput(e.target.value)} placeholder="Escribe un mensaje…"/><button className="primary" type="submit" disabled={!chatInput.trim()||chatLoading}>Enviar</button></form>{chatMsg&&<div className="notice">{chatMsg}</div>}<small className="small">Chat público de la comunidad. No compartas datos personales.</small></Panel>}
+ {tab==='friends'&&<Panel title="👥 Amigos"><p>Encuentra jugadores y añade rivales a tu red.</p><div className="inline"><input placeholder="Nombre del jugador" value={friendSearch} onChange={e=>setFriendSearch(e.target.value)} onKeyDown={e=>e.key==='Enter'&&searchFriends()}/><button type="button" onClick={searchFriends} disabled={friendSearching}>{friendSearching?'⏳ Buscando…':'🔎 Buscar'}</button></div>{friendMsg&&<div className="notice">{friendMsg}</div>}{friendResults.length>0&&<div className="list">{friendResults.map(f=><div className="list-row" key={f.id}>🧑 <span>{f.name}<small>⚡ {f.aura}</small></span><button onClick={()=>addFriend(f)}>＋ Añadir</button></div>)}</div>}<div className="section-title">Mis amigos</div><div className="list">{friends.length?friends.map(f=><div className="list-row" key={f.id}>🟢 <span>{f.name}<small>⚡ {f.aura}</small></span><button className="primary" onClick={()=>openPrivateChat(f)}>💬 Chat</button></div>):<div className="empty">Todavía no tienes amigos. Busca un jugador arriba.</div>}</div></Panel>}
+ {tab==='chat'&&<Panel title={privateFriend?`💬 Chat con ${privateFriend.name}`:'💬 Chat global'}>{privateFriend?<><button type="button" onClick={()=>{setPrivateFriend(null);setPrivateChat([])}}>← Chat global</button><div className="private-chat-head">🟢 {privateFriend.name}<small>⚡ {privateFriend.aura} Aura</small></div><div className="chat-box private-chat-box">{privateChat.length?privateChat.map(m=><div className={m.uid===user.uid?'bubble mine':'bubble'} key={m.id}><strong>{m.name}</strong><span>{m.text}</span></div>):<div className="empty">{privateLoading?'Cargando conversación…':'Todavía no hay mensajes. ¡Saluda a tu amigo!'}</div>}</div><form className="inline" onSubmit={sendPrivateChat}><input maxLength={300} value={privateInput} onChange={e=>setPrivateInput(e.target.value)} placeholder={`Escribe a ${privateFriend.name}…`}/><button className="primary" type="submit" disabled={!privateInput.trim()||privateLoading}>Enviar</button></form>{privateMsg&&<div className="notice">{privateMsg}</div>}<small className="small">Chat privado entre amigos. Solo ustedes dos pueden verlo.</small></>:<><div className="chat-box">{chat.length?chat.map(m=><div className={m.uid===user.uid?'bubble mine':'bubble'} key={m.id}><strong>{m.name}</strong><span>{m.text}</span></div>):<div className="empty">Sé la primera persona en escribir.</div>}</div><form className="inline" onSubmit={sendChat}><input maxLength={300} value={chatInput} onChange={e=>setChatInput(e.target.value)} placeholder="Escribe un mensaje…"/><button className="primary" type="submit" disabled={!chatInput.trim()||chatLoading}>Enviar</button></form>{chatMsg&&<div className="notice">{chatMsg}</div>}<small className="small">Chat público de la comunidad. No compartas datos personales.</small></>}</Panel>}
  {tab==='battle'&&<Panel title="⚔️ Batallas 1v1"><div className="battle-intro"><div><h2>Entra a la arena</h2><p>Crea una sala y comparte el código con tu rival, o únete a una sala existente.</p></div><div className="live-dot">● LIVE</div></div><div className="room-card">{!roomCode?<div className="room-actions"><button className="primary" onClick={createRoom}>{t.create}</button><span>o</span><input maxLength={6} placeholder={t.code} value={room} onChange={e=>setRoom(e.target.value.toUpperCase())}/><button onClick={joinRoom}>{t.join}</button></div>:<><div className="room-code">{roomCode}</div><button className="copy-btn" onClick={()=>navigator.clipboard?.writeText(roomCode)}>📋 Copiar código</button><div className="status">{roomStatus}</div><div className="battle-actions"><button onClick={startCamera}>📷 {cameraOn?'CÁMARA ACTIVA':'ACTIVAR CÁMARA'}</button><button className="primary" disabled={!opponentJoined||!cameraOn||!bothCamerasReady} onClick={startBattle}>🔥 {battleStarted?'BATALLA EN CURSO':'INICIAR BATALLA'}</button>{battleStarted&&<button onClick={finishBattle}>🏁 Terminar y guardar resultado</button>}</div></>}</div><div className="video-grid"><VideoCard title={user.displayName||'Jugador 1'} videoRef={videoRef} score={aura} muted/><VideoCard title="Rival" videoRef={remoteVideoRef} score={opponentAura}/></div>{battleStarted&&<div className="battle-banner">🔥 BATALLA ACTIVA · ⏱️ {battleSeconds}s · ¡Sube tu Aura! <button className="music-toggle" onClick={()=>setMusicOn(v=>!v)}>{musicOn?'🔊 Música':'🔇 Música'}</button></div>}</Panel>}
- {tab==='ai'&&<Panel title="🤖 IA Aura"><div className="ai-camera-card"><div className="ai-camera-frame"><video ref={aiVideoRef} autoPlay playsInline muted/>{!cameraOn&&<div className="ai-camera-placeholder">📷<span>Activa tu cámara para ver tu imagen aquí</span></div>}<div className="ai-camera-badge">{cameraOn?'● CÁMARA ACTIVA':'● CÁMARA INACTIVA'}</div></div></div><div className="ai-hero"><div><h2>Tu Aura actual</h2><div className="aura-number">{aura}</div><p>La lectura actual es un motor visual local de demostración. Más adelante podemos sustituirlo por un modelo ML especializado.</p></div><div className="ai-orb">⚡</div></div><div className="ai-meter"><div className="meter-fill" style={{width:`${aura}%`}}/></div><button className="primary" onClick={startCamera}>{cameraOn?'✓ Cámara conectada':'📷 Activar cámara'}</button><div className="notice">Consejo: buena iluminación y encuadre estable ayudan a obtener una señal visual más consistente.</div></Panel>}
+ {tab==='ai'&&<Panel title="🤖 IA Aura"><div className="training-notice"><strong>🎯 ÁREA DE ENTRENAMIENTO</strong><span>Usa esta sección para practicar y aprender a controlar tu Aura antes de entrar a batallas de farmeo de Aura.</span><small>⚠️ El Aura mostrado aquí es de entrenamiento y no suma Aura a tu perfil.</small></div><div className="ai-camera-card"><div className="ai-camera-frame"><video ref={aiVideoRef} autoPlay playsInline muted/>{!cameraOn&&<div className="ai-camera-placeholder">📷<span>Activa tu cámara para entrenar y ver tu Aura aquí</span></div>}<div className="ai-camera-badge">{cameraOn?'● CÁMARA ACTIVA':'● CÁMARA INACTIVA'}</div>{cameraOn&&<div className="ai-aura-overlay"><span>⚡ AURA</span><b>{aura}</b></div>}</div><div className="ai-aura-label">⚡ Aura detectada: <strong>{aura}</strong></div><div className="ai-meter"><div className="meter-fill" style={{width:`${aura}%`}}/></div></div><div className="ai-hero"><div><h2>Tu Aura de entrenamiento</h2><div className="aura-number">{aura}</div><p>La lectura es una métrica visual local de demostración para practicar antes de entrar a una batalla.</p></div><div className="ai-orb">⚡</div></div><button className="primary" onClick={startCamera}>{cameraOn?'✓ Cámara conectada':'📷 Activar cámara'}</button><div className="notice">Consejo: buena iluminación, rostro visible y encuadre estable ayudan a obtener una señal visual más consistente.</div></Panel>}
  {tab==='ranking'&&<Panel title="🏆 Ranking global"><div className="podium"><div>🥈 {leaders[1]?.name||'—'}<b>{leaders[1]?.aura||0}</b></div><div>🥇 {leaders[0]?.name||'—'}<b>{leaders[0]?.aura||0}</b></div><div>🥉 {leaders[2]?.name||'—'}<b>{leaders[2]?.aura||0}</b></div></div><div className="leader-list">{leaders.map((x,i)=><div className="leader" key={x.id}><span>#{i+1} · {x.name}</span><b>⚡ {x.aura}</b></div>)}</div></Panel>}
  {tab==='league'&&<Panel title="🥇 Liga"><div className="league-card"><div className="league-badge">⚡</div><h2>Bronce</h2><p>Gana batallas para subir a Plata, Oro y las divisiones superiores.</p><div className="progress"><span style={{width:`${Math.min(100,(profile.wins*10)%101)}%`}}/></div><small>{profile.wins*10} / 100 puntos de ascenso</small></div><div className="three-col"><Stat label="Temporada" value="01"/><Stat label="Victorias" value={profile.wins}/><Stat label="Nivel" value={profile.level}/></div></Panel>}
  {tab==='clans'&&<Panel title="🛡️ Clanes"><div className="clan-create"><input placeholder="Nombre del clan" value={clanName} onChange={e=>{setClanName(e.target.value);setClanMsg('')}}/><button className="primary" onClick={createClan}>＋ Crear clan</button></div>{clanMsg&&<div className="notice">{clanMsg}</div>}<div className="section-title">Clanes de la comunidad</div><div className="home-grid">{clans.length?clans.map(c=><div className="clan-card" key={c.id}><h3>{c.name}</h3><p>👥 {c.members?.length||0} miembros</p><button onClick={()=>joinClan(c)}>Unirme</button></div>):<div className="empty">Sé el primer clan de la comunidad.</div>}</div></Panel>}
@@ -315,7 +360,7 @@ useEffect(()=>{if(!cameraOn||!videoRef.current)return; const v=videoRef.current;
  </main></div></div>
 }
 
-function AuthScreen(p:any){const {authMode,setAuthMode,email,setEmail,password,setPassword,password2,setPassword2,name,setName,authMsg,setAuthMsg,handleAuth,resetPassword,resetSent,lang,setLang,t}=p;return <div className="auth-shell"><div className="auth-brand"><div className="brand">⚡ <span>AURA BATTLE</span><b>V4</b></div><p>La arena donde tu Aura habla por ti.</p></div>{authMode==='choice'?<div className="auth-card"><div className="eyebrow">ONLINE AURA ARENA</div><h1>Entra al combate</h1><p>Compite, gana Aura y descubre quién domina la arena.</p><button className="primary" onClick={()=>setAuthMode('login')}>🔐 {t.login}</button><button onClick={()=>setAuthMode('register')}>📝 {t.register}</button><div className="lang-line">🌎 <select value={lang} onChange={e=>setLang(e.target.value as Lang)}><option value="es">Español</option><option value="en">English</option><option value="pt">Português</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="it">Italiano</option><option value="tr">Türkçe</option><option value="ja">日本語</option><option value="ko">한국어</option><option value="zh">中文</option></select></div></div>:<form className="auth-card" onSubmit={handleAuth}><div className="eyebrow">{authMode==='login'?'ACCESO':'NUEVO JUGADOR'}</div><h1>{authMode==='login'?t.login:t.register}</h1>{authMode==='register'&&<input placeholder="Nombre de jugador" value={name} onChange={e=>setName(e.target.value)} required/>}<input type="email" placeholder="Correo electrónico" value={email} onChange={e=>setEmail(e.target.value)} required/><input type="password" placeholder="Contraseña" value={password} onChange={e=>setPassword(e.target.value)} required/>{authMode==='register'&&<><input type="password" placeholder="Repite la contraseña" value={password2} onChange={e=>setPassword2(e.target.value)} required/><div className={password2?(password===password2?'match ok':'match bad'):'match'}>{password2?(password===password2?'✓ Las contraseñas coinciden':'✕ Las contraseñas no coinciden'):'Confirmación de contraseña'}</div></>}{authMsg&&<div className="error">{authMsg}</div>}<button className="primary" type="submit">{authMode==='login'?t.login:t.register}</button>{authMode==='login'&&<button type="button" className="link-button" onClick={resetPassword}>¿Olvidaste tu contraseña?</button>}{resetSent&&<div className="success">✓ Revisa tu correo para restablecerla.</div>}<button type="button" onClick={()=>{setAuthMode('choice');setAuthMsg('')}}>← Volver</button></form>}<div className="ad-slot auth-ad">Espacio publicitario · comunidad AURA BATTLE</div></div>}
+function AuthScreen(p:any){const {authMode,setAuthMode,email,setEmail,password,setPassword,password2,setPassword2,name,setName,authMsg,setAuthMsg,handleAuth,resetPassword,resetSent,lang,setLang,t}=p;return <div className="auth-shell"><div className="auth-brand"><div className="brand">⚡ <span>AURA BATTLE</span><b>V4</b></div><p>La arena donde tu Aura habla por ti.</p></div>{authMode==='choice'?<div className="auth-card"><div className="eyebrow">ONLINE AURA ARENA</div><h1>Entra al combate</h1><p>Compite, gana Aura y descubre quién domina la arena.</p><button className="primary" onClick={()=>setAuthMode('login')}>🔐 {t.login}</button><button onClick={()=>setAuthMode('register')}>📝 {t.register}</button><div className="lang-line">🌎 <select value={lang} onChange={e=>setLang(e.target.value as Lang)}><option value="es">Español</option><option value="en">English</option><option value="pt">Português</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="it">Italiano</option><option value="tr">Türkçe</option><option value="ja">日本語</option><option value="ko">한국어</option><option value="zh">中文</option></select></div></div>:<div className={authMode==='login'?'auth-login-layout':'auth-form-wrap'}>{authMode==='login'&&<div className="auth-visual"><img src="/assets/aura-arena-home.png" alt="AURA BATTLE Arena"/><div className="auth-visual-overlay"><span>⚡ ONLINE AURA ARENA</span><strong>Prepárate para la batalla</strong></div></div>}<form className="auth-card" onSubmit={handleAuth}><div className="eyebrow">{authMode==='login'?'ACCESO':'NUEVO JUGADOR'}</div><h1>{authMode==='login'?t.login:t.register}</h1>{authMode==='register'&&<input placeholder="Nombre de jugador" value={name} onChange={e=>setName(e.target.value)} required/>}<input type="email" placeholder="Correo electrónico" value={email} onChange={e=>setEmail(e.target.value)} required/><input type="password" placeholder="Contraseña" value={password} onChange={e=>setPassword(e.target.value)} required/>{authMode==='register'&&<><input type="password" placeholder="Repite la contraseña" value={password2} onChange={e=>setPassword2(e.target.value)} required/><div className={password2?(password===password2?'match ok':'match bad'):'match'}>{password2?(password===password2?'✓ Las contraseñas coinciden':'✕ Las contraseñas no coinciden'):'Confirmación de contraseña'}</div></>}{authMsg&&<div className="error">{authMsg}</div>}<button className="primary" type="submit">{authMode==='login'?t.login:t.register}</button>{authMode==='login'&&<button type="button" className="link-button" onClick={resetPassword}>¿Olvidaste tu contraseña?</button>}{resetSent&&<div className="success">✓ Revisa tu correo para restablecerla.</div>}<button type="button" onClick={()=>{setAuthMode('choice');setAuthMsg('')}}>← Volver</button></form></div>}<div className="ad-slot auth-ad">Espacio publicitario · comunidad AURA BATTLE</div></div>}
 function icon(n:Tab){return ({home:'🏠',profile:'👤',friends:'👥',chat:'💬',battle:'⚔️',ai:'🤖',ranking:'🏆',league:'🥇',clans:'🛡️',premium:'💎',settings:'⚙️'} as Record<Tab,string>)[n]}
 function Panel({title,children}:{title:string;children:ReactNode}){return <section className="panel"><div className="panel-title">{title}</div>{children}</section>}
 function Card({icon,title,text,action}:{icon:string;title:string;text:string;action:()=>void}){return <button className="feature" onClick={action}><span>{icon}</span><div><h3>{title}</h3><p>{text}</p></div><b>→</b></button>}
