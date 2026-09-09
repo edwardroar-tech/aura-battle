@@ -1,8 +1,8 @@
-# AURA BATTLE V5.154
+# AURA BATTLE V5.157
 
 AURA BATTLE es una arena 1v1 con cámara, WebRTC, Socket.IO, Firebase y análisis local de movimiento con MediaPipe Pose.
 
-## Cambios de V5.154
+## Cambios acumulados de V5.155
 - 🧠 IA Aura: entrenamiento de 15 segundos con medidor de Aura en tiempo real.
 - ⚡ Cada entrenamiento completado otorga +1 Aura y actualiza el perfil en Firestore.
 - 🛡️ Filtro local de seguridad visual en batallas con NSFWJS/TensorFlow.js. Si detecta con alta confianza contenido sexual potencialmente no permitido, se apaga la cámara local y se cancela la batalla para ambos.
@@ -20,3 +20,16 @@ La detección automática de contenido es una medida de seguridad y puede equivo
 - Build: `npm run build`
 - Start: `npm start`
 - Node: >=20
+
+## Cambios de V5.157
+- 🔔 Campana de notificaciones visible en Inicio.
+- 💬 Muestra solicitudes de amistad y mensajes privados nuevos.
+- 🔢 Badge con contador de notificaciones pendientes.
+- 📱 Panel adaptado para móviles y navegación rápida al contenido pendiente.
+- 👁️ Al abrir un chat privado, sus mensajes pendientes se marcan como vistos en ese dispositivo.
+
+
+### v5.157
+- Botón «⚔️ Invitar a batalla» dentro del chat privado de amigos.
+- El invitado recibe la invitación en Notificaciones.
+- Al aceptar, entra directamente a la sala sin introducir código.

@@ -280,6 +280,7 @@ button,input,select{border-radius:14px}
 .bubble{max-width:82%;background:linear-gradient(135deg,#17213c,#111a30);border-color:rgba(112,133,201,.18);box-shadow:0 5px 18px rgba(0,0,0,.18)}
 .bubble.mine{align-self:flex-end;background:linear-gradient(135deg,#594bff,#933cff);border-color:rgba(181,143,255,.3)}
 .private-chat-head{border-color:rgba(123,139,210,.2);background:linear-gradient(100deg,rgba(18,25,47,.98),rgba(8,12,25,.98))}
+.private-chat-box{padding-bottom:24px;scroll-padding-bottom:24px}.chat-scroll-anchor{height:2px;flex:0 0 2px}
 
 /* Battle */
 .battle-intro{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:16px;border:1px solid var(--ab-line);border-radius:18px;background:rgba(8,12,25,.62)}
@@ -397,3 +398,49 @@ button,input,select{border-radius:14px}
 @media(max-width:700px){.friend-actions{gap:6px}.danger-btn{min-width:40px;padding:9px 10px!important}}
 
 .ai-training-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px}.ai-training-actions button{flex:1;min-width:220px}.danger-btn{border:1px solid rgba(255,80,120,.35)!important;color:#ff9bb4!important;background:rgba(255,70,110,.06)!important}
+
+/* V5.156 - notifications */
+.notification-wrap{position:relative;display:flex;align-items:center}
+.notification-btn{position:relative;display:flex;align-items:center;justify-content:center;width:42px;height:42px;padding:0!important;border-radius:14px!important;font-size:20px;line-height:1;background:rgba(255,255,255,.045)!important;border:1px solid rgba(255,255,255,.12)!important;box-shadow:none!important}
+.notification-btn.active{border-color:rgba(124,99,255,.7)!important;background:rgba(124,99,255,.16)!important}
+.notification-badge{position:absolute;right:-5px;top:-6px;min-width:20px;height:20px;padding:0 5px;border-radius:999px;display:flex;align-items:center;justify-content:center;background:#ff3d70;color:#fff;font-size:10px;font-weight:900;border:2px solid #0a0c18;box-shadow:0 0 14px rgba(255,61,112,.6)}
+.notification-panel{position:absolute;right:0;top:50px;width:min(360px,calc(100vw - 28px));padding:10px;border:1px solid rgba(255,255,255,.12);border-radius:18px;background:rgba(10,12,24,.98);backdrop-filter:blur(22px);box-shadow:0 18px 55px rgba(0,0,0,.5);z-index:80}
+.notification-title{font-weight:900;font-size:16px;padding:8px 10px 10px;border-bottom:1px solid rgba(255,255,255,.08)}
+.notification-item{display:flex;flex-direction:column;align-items:flex-start;width:100%;gap:4px;margin-top:7px;padding:11px 12px;text-align:left;border-radius:13px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.06);color:#fff}
+.notification-item:hover{transform:none!important;background:rgba(124,99,255,.12)!important;border-color:rgba(124,99,255,.35)!important}
+.notification-item strong{font-size:13px}.notification-item small{font-size:11px;color:#aab1c7;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.notification-messages{margin-top:8px}.notification-subtitle{font-size:11px;color:#8e96ad;font-weight:800;padding:6px 8px;text-transform:uppercase;letter-spacing:.6px}.notification-empty{padding:18px 10px;color:#9da5bb;text-align:center;font-size:13px}
+@media(max-width:520px){.notification-btn{width:38px;height:38px;font-size:18px}.notification-panel{right:-5px;top:47px;width:min(340px,calc(100vw - 20px))}.notification-item{padding:10px}.app .top-actions{gap:5px}}
+
+/* v5.157 — invitación de batalla desde chat */
+.private-chat-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.private-chat-head small{margin-right:auto}
+.battle-invite-btn{padding:9px 12px!important;border-radius:12px!important;font-size:12px!important;font-weight:800!important;background:linear-gradient(135deg,rgba(105,77,255,.22),rgba(54,216,255,.10))!important;border:1px solid rgba(126,102,255,.38)!important;color:#fff!important;box-shadow:none!important}
+.battle-invite-btn:hover{transform:translateY(-1px)!important}
+.notification-battle-invite{margin-top:8px;padding:12px;border:1px solid rgba(126,102,255,.28);border-radius:14px;background:rgba(126,102,255,.08)}
+.notification-battle-invite strong{display:block;font-size:13px;margin-bottom:9px}
+.notification-battle-actions{display:flex;gap:7px}
+.notification-battle-actions button{flex:1;padding:9px 8px!important;font-size:12px!important}
+@media(max-width:520px){.private-chat-head{align-items:flex-start}.battle-invite-btn{width:100%;margin-top:3px}.notification-battle-actions button{min-width:0}}
+
+/* v5.157 — invitación de batalla desde chat */
+.private-chat-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.private-chat-head small{margin-right:auto}
+.battle-invite-btn{padding:9px 12px!important;border-radius:12px!important;font-size:12px!important;font-weight:800!important;background:linear-gradient(135deg,rgba(105,77,255,.22),rgba(54,216,255,.10))!important;border:1px solid rgba(126,102,255,.38)!important;color:#fff!important;box-shadow:none!important}
+.battle-invite-btn:hover{transform:translateY(-1px)!important}
+.notification-battle-invite{margin-top:8px;padding:12px;border:1px solid rgba(126,102,255,.28);border-radius:14px;background:rgba(126,102,255,.08)}
+.notification-battle-invite strong{display:block;font-size:13px;margin-bottom:9px}
+.notification-battle-actions{display:flex;gap:7px}
+.notification-battle-actions button{flex:1;padding:9px 8px!important;font-size:12px!important}
+@media(max-width:520px){.private-chat-head{align-items:flex-start}.battle-invite-btn{width:100%;margin-top:3px}.notification-battle-actions button{min-width:0}}
+
+/* v5.157 — invitación de batalla desde chat */
+.private-chat-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.private-chat-head small{margin-right:auto}
+.battle-invite-btn{padding:9px 12px!important;border-radius:12px!important;font-size:12px!important;font-weight:800!important;background:linear-gradient(135deg,rgba(105,77,255,.22),rgba(54,216,255,.10))!important;border:1px solid rgba(126,102,255,.38)!important;color:#fff!important;box-shadow:none!important}
+.battle-invite-btn:hover{transform:translateY(-1px)!important}
+.notification-battle-invite{margin-top:8px;padding:12px;border:1px solid rgba(126,102,255,.28);border-radius:14px;background:rgba(126,102,255,.08)}
+.notification-battle-invite strong{display:block;font-size:13px;margin-bottom:9px}
+.notification-battle-actions{display:flex;gap:7px}
+.notification-battle-actions button{flex:1;padding:9px 8px!important;font-size:12px!important}
+@media(max-width:520px){.private-chat-head{align-items:flex-start}.battle-invite-btn{width:100%;margin-top:3px}.notification-battle-actions button{min-width:0}}
