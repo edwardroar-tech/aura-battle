@@ -502,3 +502,25 @@ button,input,select{border-radius:14px}
   .clan-form-grid{gap:10px}
   .clan-field input,.clan-field select,.clan-field textarea{font-size:16px}
 }
+
+/* v5.162.1 FINAL — Clanes mobile correction */
+.clan-create{padding:18px!important;border-radius:20px!important;margin-bottom:22px!important;overflow:hidden}
+.clan-form-grid{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:14px!important;align-items:start!important}
+.clan-field{min-width:0!important}
+.clan-field input,.clan-field select,.clan-field textarea{box-sizing:border-box!important;width:100%!important;min-width:0!important}
+.clan-field:first-child{grid-column:1/-1!important}
+.clan-description-field{grid-column:1/-1!important}
+.clan-visibility-field{grid-column:1/-1!important}
+.clan-tag-input{cursor:default!important;text-align:left!important;font-size:16px!important;font-weight:900!important;letter-spacing:1px!important}
+.clan-create-foot{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:14px!important;margin-top:14px!important}
+.clan-create-foot button{min-height:50px!important}
+@media(max-width:700px){
+  .clan-create{padding:15px!important}
+  .clan-form-grid{grid-template-columns:1fr!important;gap:12px!important}
+  .clan-field:first-child,.clan-description-field,.clan-visibility-field{grid-column:auto!important}
+  .clan-field label{font-size:14px!important}
+  .clan-field input,.clan-field select,.clan-field textarea{font-size:16px!important;min-height:50px!important}
+  .clan-field textarea{min-height:110px!important}
+  .clan-create-foot{flex-direction:column!important;align-items:stretch!important}
+  .clan-create-foot button{width:100%!important}
+}
