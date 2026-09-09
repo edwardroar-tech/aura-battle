@@ -3,7 +3,7 @@ import type { FormEvent, ReactNode, RefObject } from 'react'
 import { FilesetResolver, PoseLandmarker } from '@mediapipe/tasks-vision'
 import { auth, db } from './lib/firebase'
 import { socket } from './lib/socket'
-import { createUserWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut, updateProfile } from 'firebase/auth'
+import { createUserWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut, updateProfile, setPersistence, browserLocalPersistence } from 'firebase/auth'
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, arrayUnion, where } from 'firebase/firestore'
 
 type Lang = 'es'|'en'|'pt'|'fr'|'de'|'it'|'tr'|'ja'|'ko'|'zh'
@@ -35,15 +35,15 @@ const copy:Record<Lang,Record<string,string>>={
 const nav:Tab[]=['home','profile','friends','chat','battle','ai','ranking','league','clans','premium','settings']
 
 export default function App(){
- const [user,setUser]=useState(auth.currentUser); const [authMode,setAuthMode]=useState<'choice'|'login'|'register'>('choice'); const [lang,setLang]=useState<Lang>('es')
+ const [user,setUser]=useState(auth.currentUser); const [authReady,setAuthReady]=useState(!!auth.currentUser); const [authMode,setAuthMode]=useState<'choice'|'login'|'register'>('choice'); const [lang,setLang]=useState<Lang>('es')
  const [email,setEmail]=useState(''); const [password,setPassword]=useState(''); const [password2,setPassword2]=useState(''); const [name,setName]=useState(''); const [authMsg,setAuthMsg]=useState('')
  const [tab,setTab]=useState<Tab>('home'); const [profile,setProfile]=useState({aura:0,wins:0,losses:0,level:1})
- const [friendSearch,setFriendSearch]=useState(''); const [friends,setFriends]=useState<Friend[]>([]); const [friendResults,setFriendResults]=useState<Friend[]>([]); const [friendMsg,setFriendMsg]=useState(''); const [friendSearching,setFriendSearching]=useState(false); const [friendRequests,setFriendRequests]=useState<FriendRequest[]>([]); const [battleInvites,setBattleInvites]=useState<BattleInvite[]>([]); const [notificationOpen,setNotificationOpen]=useState(false); const [unreadPrivateMessages,setUnreadPrivateMessages]=useState<ChatMsg[]>([])
+ const [friendSearch,setFriendSearch]=useState(''); const [friends,setFriends]=useState<Friend[]>([]); const [friendResults,setFriendResults]=useState<Friend[]>([]); const [friendMsg,setFriendMsg]=useState(''); const [friendSearching,setFriendSearching]=useState(false); const [friendRequests,setFriendRequests]=useState<FriendRequest[]>([]); const [unreadFriendRequests,setUnreadFriendRequests]=useState<FriendRequest[]>([]); const [battleInvites,setBattleInvites]=useState<BattleInvite[]>([]); const [notificationOpen,setNotificationOpen]=useState(false); const [unreadPrivateMessages,setUnreadPrivateMessages]=useState<ChatMsg[]>([])
  const [chat,setChat]=useState<ChatMsg[]>([]); const [chatInput,setChatInput]=useState(''); const [chatLoading,setChatLoading]=useState(false); const [chatMsg,setChatMsg]=useState(''); const [privateFriend,setPrivateFriend]=useState<Friend|null>(null); const [privateChat,setPrivateChat]=useState<ChatMsg[]>([]); const [privateInput,setPrivateInput]=useState(''); const [privateLoading,setPrivateLoading]=useState(false); const [privateMsg,setPrivateMsg]=useState('')
  const [leaders,setLeaders]=useState<Friend[]>([]); const [clans,setClans]=useState<Clan[]>([]); const [clanName,setClanName]=useState(''); const [clanMsg,setClanMsg]=useState('')
  const [premium,setPremium]=useState(false); const [musicOn,setMusicOn]=useState(true); const [mobileMore,setMobileMore]=useState(false); const [resetSent,setResetSent]=useState(false); const [theme,setTheme]=useState<'neon'|'midnight'>('neon')
  const [poseReady,setPoseReady]=useState(false); const [trainingActive,setTrainingActive]=useState(false); const [trainingSeconds,setTrainingSeconds]=useState(0); const [trainingDone,setTrainingDone]=useState(false); const [safetyReady,setSafetyReady]=useState(false); const [battleReady,setBattleReady]=useState(false); const [opponentReady,setOpponentReady]=useState(false); const [detectedMove,setDetectedMove]=useState('Esperando movimiento…'); const [moveBonus,setMoveBonus]=useState(0); const [room,setRoom]=useState(''); const [roomCode,setRoomCode]=useState(''); const [roomStatus,setRoomStatus]=useState('Listo.'); const [opponentJoined,setOpponentJoined]=useState(false); const [bothCamerasReady,setBothCamerasReady]=useState(false); const [host,setHost]=useState(false); const [cameraOn,setCameraOn]=useState(false); const [battleStarted,setBattleStarted]=useState(false); const [battleSeconds,setBattleSeconds]=useState(0); const [aura,setAura]=useState(0); const [opponentAura,setOpponentAura]=useState(0); const [online,setOnline]=useState(0); const [battleResult,setBattleResult]=useState<{outcome:'win'|'loss'|'draw';localScore:number;rivalScore:number;delta:number}|null>(null)
- const privateChatEndRef=useRef<HTMLDivElement|null>(null); const safetyModelRef=useRef<any>(null); const safetyLoadingRef=useRef(false); const safetyScanAtRef=useRef(0); const speechRecognitionRef=useRef<any>(null); const safetyViolationRef=useRef(false); const hostRef=useRef(false); const battleResultHandledRef=useRef(false); const poseHistoryRef=useRef<{x:number;y:number;z:number;visibility:number}[][]>([]); const patternScoreRef=useRef(0); const lastMoveBonusRef=useRef(0); const lastMoveAtRef=useRef(0); const cameraSourceRef=useRef<'ai'|'battle'|null>(null); const videoRef=useRef<HTMLVideoElement>(null); const aiVideoRef=useRef<HTMLVideoElement>(null); const battleMusicRef=useRef<HTMLAudioElement>(null); const remoteVideoRef=useRef<HTMLVideoElement>(null); const localStreamRef=useRef<MediaStream|null>(null); const peerRef=useRef<RTCPeerConnection|null>(null); const pendingIceRef=useRef<RTCIceCandidateInit[]>([]); const canvasRef=useRef<HTMLCanvasElement|null>(null); const poseLandmarkerRef=useRef<PoseLandmarker|null>(null); const poseLoadingRef=useRef(false); const previousPoseRef=useRef<{x:number;y:number;z:number;visibility:number}[]|null>(null); const movementScoreRef=useRef(0); const poseFrameCountRef=useRef(0); const poseVisibleFrameCountRef=useRef(0); const lastPoseTimeRef=useRef(0)
+ const privateChatEndRef=useRef<HTMLDivElement|null>(null); const privateInputRef=useRef<HTMLInputElement|null>(null); const safetyModelRef=useRef<any>(null); const safetyLoadingRef=useRef(false); const safetyScanAtRef=useRef(0); const speechRecognitionRef=useRef<any>(null); const safetyViolationRef=useRef(false); const hostRef=useRef(false); const battleResultHandledRef=useRef(false); const poseHistoryRef=useRef<{x:number;y:number;z:number;visibility:number}[][]>([]); const patternScoreRef=useRef(0); const lastMoveBonusRef=useRef(0); const lastMoveAtRef=useRef(0); const cameraSourceRef=useRef<'ai'|'battle'|null>(null); const videoRef=useRef<HTMLVideoElement>(null); const aiVideoRef=useRef<HTMLVideoElement>(null); const battleMusicRef=useRef<HTMLAudioElement>(null); const remoteVideoRef=useRef<HTMLVideoElement>(null); const localStreamRef=useRef<MediaStream|null>(null); const peerRef=useRef<RTCPeerConnection|null>(null); const pendingIceRef=useRef<RTCIceCandidateInit[]>([]); const canvasRef=useRef<HTMLCanvasElement|null>(null); const poseLandmarkerRef=useRef<PoseLandmarker|null>(null); const poseLoadingRef=useRef(false); const previousPoseRef=useRef<{x:number;y:number;z:number;visibility:number}[]|null>(null); const movementScoreRef=useRef(0); const poseFrameCountRef=useRef(0); const poseVisibleFrameCountRef=useRef(0); const lastPoseTimeRef=useRef(0)
  const t=copy[lang]
 
  // Mantiene la navegación interna de la app sincronizada con el botón Atrás
@@ -76,10 +76,13 @@ export default function App(){
  },[])
 
  useEffect(()=>{
+   let alive=true
+   void setPersistence(auth,browserLocalPersistence).catch(e=>console.warn('Auth persistence setup:',e))
    const unsubscribe=onAuthStateChanged(auth,async u=>{
-     setUser(u);setPrivateFriend(null);setPrivateChat([])
+     if(!alive)return
+     setUser(u);setAuthReady(true);setPrivateFriend(null);setPrivateChat([])
      if(!u){setFriends([]);return}
-     setAuthMode('choice')
+     setAuthMode('choice');setTab('home');setNotificationOpen(false)
      setAuthMsg('')
      const snap=await getDoc(doc(db,'users',u.uid))
      if(snap.exists()){
@@ -101,15 +104,20 @@ export default function App(){
 
    // Recupera explícitamente el resultado del inicio de sesión con Google
    // después de volver a AURA BATTLE desde la página de Google/Firebase.
-   getRedirectResult(auth).catch((e:any)=>{
+   getRedirectResult(auth).then(async result=>{
+     if(!alive)return
+     if(result?.user){
+       setUser(result.user);setAuthReady(true);setAuthMode('choice');setAuthMsg('');setTab('home')
+     }
+   }).catch((e:any)=>{
      console.error('Google redirect result error:',e)
      if(e?.code){
        setAuthMsg(e.message?.replace('Firebase: Error (auth/','').replace(').','')||'No se pudo completar el inicio de sesión con Google.')
-       setAuthMode('login')
      }
+     setAuthReady(true)
    })
 
-   return unsubscribe
+   return()=>{alive=false;unsubscribe()}
  },[])
 
  useEffect(()=>{
@@ -119,23 +127,28 @@ export default function App(){
     const rows=s.docs.map(d=>({id:d.id,...d.data()} as FriendRequest)).filter(r=>r.senderId&&r.receiverId===user.uid)
     rows.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0))
     setFriendRequests(rows)
+    const unread=rows.filter(r=>localStorage.getItem(`auraFriendRequestRead:${user.uid}:${r.id}`)!=='1')
+    setUnreadFriendRequests(unread)
   },e=>{
     console.error('Friend requests load error:',e)
-    setFriendRequests([])
+    setFriendRequests([]);setUnreadFriendRequests([])
   })
 },[user])
 
  useEffect(()=>{
   if(!user){setBattleInvites([]);setUnreadPrivateMessages([]);return}
   const readKeyPrefix=`auraPrivateRead:${user.uid}:`
+  const inviteQ=query(collection(db,'battleInvites'),where('receiverId','==',user.uid),limit(30))
+  const unsubInvites=onSnapshot(inviteQ,s=>{
+    const rows=s.docs.map(d=>({id:d.id,...d.data()} as BattleInvite)).filter(x=>x.receiverId===user.uid&&x.status==='pending'&&x.roomCode)
+    rows.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0))
+    setBattleInvites(rows)
+  },e=>{console.error('Battle invitations load error:',e);setBattleInvites([])})
+
   const q=query(collection(db,'privateChats'),where('participants','array-contains',user.uid),limit(200))
-  return onSnapshot(q,s=>{
-    const rows=s.docs.map(d=>({id:d.id,...d.data()} as ChatMsg)).filter(m=>m.uid!==user.uid)
-    const invites=rows.filter(m=>m.type==='battleInvite'&&m.receiverId===user.uid&&m.status==='pending'&&m.roomCode)
-      .map(m=>({id:m.id,senderId:m.uid,senderName:m.name||'Jugador',receiverId:user.uid,roomCode:String(m.roomCode),status:'pending' as const,createdAt:m.createdAt}))
-    invites.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0))
-    setBattleInvites(invites.slice(0,20))
-    const unread=rows.filter(m=>m.type!=='battleInvite').filter(m=>{
+  const unsubMessages=onSnapshot(q,s=>{
+    const rows=s.docs.map(d=>({id:d.id,...d.data()} as ChatMsg)).filter(m=>m.uid!==user.uid&&m.type!=='battleInvite')
+    const unread=rows.filter(m=>{
       const otherId=m.uid
       const readAt=Number(localStorage.getItem(`${readKeyPrefix}${otherId}`)||0)
       const createdAt=(m.createdAt?.toMillis?.()||((m.createdAt?.seconds||0)*1000))
@@ -147,7 +160,8 @@ export default function App(){
       return tb-ta
     })
     setUnreadPrivateMessages(unread.slice(0,20))
-  },e=>{console.error('Private notifications load error:',e);setBattleInvites([]);setUnreadPrivateMessages([])})
+  },e=>{console.error('Private notifications load error:',e);setUnreadPrivateMessages([])})
+  return()=>{unsubInvites();unsubMessages()}
 },[user])
 
 useEffect(()=>{
@@ -547,7 +561,7 @@ useEffect(()=>{
 
  async function handleAuth(e:FormEvent){e.preventDefault();setAuthMsg('');try{if(authMode==='register'){if(name.trim().length<2)return setAuthMsg('Escribe un nombre de jugador.');if(password!==password2)return setAuthMsg('Las contraseñas no coinciden.');if(password.length<6)return setAuthMsg('La contraseña debe tener al menos 6 caracteres.');const c=await createUserWithEmailAndPassword(auth,email,password);const clean=name.trim();await updateProfile(c.user,{displayName:clean});await setDoc(doc(db,'users',c.user.uid),{uid:c.user.uid,nombre:clean,nombreLower:clean.toLowerCase(),email,aura:0,victorias:0,derrotas:0,level:1,createdAt:serverTimestamp()},{merge:true})}else await signInWithEmailAndPassword(auth,email,password)}catch(e:any){setAuthMsg(e?.message?.replace('Firebase: Error (auth/','').replace(').','')||'No se pudo completar la operación.')}}
  async function resetPassword(){if(!email.trim()){setAuthMsg('Escribe tu correo para recuperar la contraseña.');return}try{await sendPasswordResetEmail(auth,email.trim());setResetSent(true);setAuthMsg('Te enviamos un enlace para restablecer tu contraseña.')}catch(e:any){setAuthMsg('No pudimos enviar el enlace de recuperación. Revisa el correo.')}}
- async function loginWithGoogle(){setAuthMsg('');try{const provider=new GoogleAuthProvider();provider.setCustomParameters({prompt:'select_account'});await signInWithRedirect(auth,provider)}catch(e:any){console.error('Google sign-in error:',e);setAuthMsg(e?.message?.replace('Firebase: Error (auth/','').replace(').','')||'No se pudo iniciar sesión con Google.')}}
+ async function loginWithGoogle(){setAuthMsg('');try{await setPersistence(auth,browserLocalPersistence);const provider=new GoogleAuthProvider();provider.setCustomParameters({prompt:'select_account'});await signInWithRedirect(auth,provider)}catch(e:any){console.error('Google sign-in error:',e);setAuthMsg(e?.message?.replace('Firebase: Error (auth/','').replace(').','')||'No se pudo iniciar sesión con Google.')}}
  function returnToHome(){
    if(localStreamRef.current){localStreamRef.current.getTracks().forEach(t=>t.stop());localStreamRef.current=null}
    if(videoRef.current) videoRef.current.srcObject=null
@@ -755,7 +769,7 @@ useEffect(()=>{
     setFriendMsg(`❌ No se pudo eliminar a ${f.name}${error?.code?` (${error.code})`:''}.`)
   }
  }
- function openPrivateChat(f:Friend){if(user)localStorage.setItem(`auraPrivateRead:${user.uid}:${f.id}`,String(Date.now()));setUnreadPrivateMessages(prev=>prev.filter(m=>m.uid!==f.id));setNotificationOpen(false);setPrivateFriend(f);setPrivateInput('');setPrivateMsg('');navigateTab('chat')}
+ function openPrivateChat(f:Friend){if(user)localStorage.setItem(`auraPrivateRead:${user.uid}:${f.id}`,String(Date.now()));setUnreadPrivateMessages(prev=>prev.filter(m=>m.uid!==f.id));setNotificationOpen(false);setPrivateFriend(f);setPrivateInput('');setPrivateMsg('');navigateTab('chat');window.setTimeout(()=>privateInputRef.current?.focus(),120)}
  useEffect(()=>{if(!user||!privateFriend){setPrivateChat([]);return}setPrivateLoading(true);setPrivateMsg('');const cid=conversationId(user.uid,privateFriend.id);const q=query(collection(db,'privateChats'),where('participants','array-contains',user.uid),limit(200));return onSnapshot(q,s=>{const rows=s.docs.map(d=>({id:d.id,...d.data()} as ChatMsg)).filter(m=>m.conversationId===cid&&m.type!=='battleInvite');rows.sort((a,b)=>(a.createdAt?.seconds||0)-(b.createdAt?.seconds||0));setPrivateChat(rows);setPrivateLoading(false)},e=>{console.error('Private chat load error:',e);setPrivateLoading(false);setPrivateMsg(`⚠️ No se pudo cargar el chat con este amigo${e?.code?` (${e.code})`:''}.`)})},[user,privateFriend])
  useEffect(()=>{
   if(!privateFriend)return;
@@ -778,7 +792,23 @@ useEffect(()=>{
   vv?.addEventListener('resize',keepChatVisible);
   return()=>{input.removeEventListener('focus',keepChatVisible);vv?.removeEventListener('resize',keepChatVisible)}
 },[privateFriend])
- async function sendPrivateChat(e:FormEvent){e.preventDefault();const text=privateInput.trim();if(!text||!user||!privateFriend)return;setPrivateMsg('');setPrivateInput('');try{await addDoc(collection(db,'privateChats'),{uid:user.uid,name:user.displayName||'Jugador',text,conversationId:conversationId(user.uid,privateFriend.id),participants:[user.uid,privateFriend.id],createdAt:serverTimestamp()})}catch(error){console.error('Private chat send error:',error);setPrivateInput(text);setPrivateMsg('⚠️ No se pudo enviar el mensaje. Revisa tu conexión.')}}
+ async function sendPrivateChat(e:FormEvent){
+  e.preventDefault();
+  const text=privateInput.trim();
+  if(!text||!user||!privateFriend)return;
+  setPrivateMsg('');
+  setPrivateInput('');
+  window.setTimeout(()=>privateInputRef.current?.focus(),0);
+  try{
+    await addDoc(collection(db,'privateChats'),{uid:user.uid,name:user.displayName||'Jugador',text,conversationId:conversationId(user.uid,privateFriend.id),participants:[user.uid,privateFriend.id],createdAt:serverTimestamp()})
+    window.setTimeout(()=>privateInputRef.current?.focus(),30);
+  }catch(error){
+    console.error('Private chat send error:',error);
+    setPrivateInput(text);
+    setPrivateMsg('⚠️ No se pudo enviar el mensaje. Revisa tu conexión.');
+    window.setTimeout(()=>privateInputRef.current?.focus(),30);
+  }
+ }
  async function inviteBattleWithFriend(f:Friend){
   if(!user)return
   if(!friends.some(x=>x.id===f.id)){setPrivateMsg('⚠️ Solo puedes invitar a una batalla a un amigo.');return}
@@ -793,41 +823,40 @@ useEffect(()=>{
       if(code.length!==6){setPrivateMsg('⚠️ El servidor devolvió un código de sala inválido.');return}
       setRoomCode(code);setRoom('');setHost(true);hostRef.current=true;setOpponentJoined(false);setRoomStatus(`⚔️ Invitación enviada a ${f.name}. Esperando que entre…`)
       try{
-        // La invitación se guarda dentro de privateChats. Así funciona con las reglas
-        // que ya permiten leer/escribir conversaciones entre dos amigos y no depende
-        // de una colección adicional que deba publicarse por separado.
-        await addDoc(collection(db,'privateChats'),{
-          uid:user.uid,
-          name:user.displayName||'Jugador',
-          text:'⚔️ Te invité a una batalla',
-          type:'battleInvite',
-          roomCode:code,
-          receiverId:f.id,
-          status:'pending',
-          conversationId:conversationId(user.uid,f.id),
-          participants:[user.uid,f.id],
-          createdAt:serverTimestamp()
-        })
+        await addDoc(collection(db,'battleInvites'),{senderId:user.uid,senderName:user.displayName||'Jugador',receiverId:f.id,roomCode:code,status:'pending',createdAt:serverTimestamp()})
         setPrivateMsg(`⚔️ Invitación enviada a ${f.name}. Le llegará a sus notificaciones y podrá entrar directamente.`)
         navigateTab('battle')
       }catch(error:any){
         console.error('Battle invite error:',error)
-        setPrivateMsg(`⚠️ No se pudo enviar la invitación${error?.code?` (${error.code})`:''}.`)
+        setPrivateMsg(`⚠️ No se pudo enviar la invitación${error?.code?` (${error.code})`:''}. Publica también firestore.rules de v5.160.`)
       }
     })
   }catch(error){console.error('Create battle invite room error:',error);setPrivateMsg('⚠️ No se pudo preparar la batalla.')}
  }
  async function acceptBattleInvite(invite:BattleInvite){
   if(!user)return
-  setBattleInvites(prev=>prev.filter(x=>x.id!==invite.id))
   setNotificationOpen(false)
   setRoomStatus(`⚔️ Entrando a la sala de ${invite.senderName||'tu amigo'}…`)
-  joinRoomCode(invite.roomCode)
+  try{
+    await updateDoc(doc(db,'battleInvites',invite.id),{status:'accepted'})
+    setBattleInvites(prev=>prev.filter(x=>x.id!==invite.id))
+    joinRoomCode(invite.roomCode)
+  }catch(error:any){
+    console.error('Accept battle invite error:',error)
+    setRoomStatus(`⚠️ No se pudo aceptar la invitación${error?.code?` (${error.code})`:''}.`)
+  }
  }
  async function declineBattleInvite(invite:BattleInvite){
-  setBattleInvites(prev=>prev.filter(x=>x.id!==invite.id))
-  setNotificationOpen(false)
-  setRoomStatus('Invitación rechazada.')
+  if(!user)return
+  try{
+    await updateDoc(doc(db,'battleInvites',invite.id),{status:'declined'})
+    setBattleInvites(prev=>prev.filter(x=>x.id!==invite.id))
+    setNotificationOpen(false)
+    setRoomStatus('Invitación rechazada.')
+  }catch(error:any){
+    console.error('Decline battle invite error:',error)
+    setRoomStatus(`⚠️ No se pudo rechazar la invitación${error?.code?` (${error.code})`:''}.`)
+  }
  }
  async function createClan(){
   const name=clanName.trim()
@@ -845,14 +874,15 @@ useEffect(()=>{
 }
  async function joinClan(c:Clan){if(!user)return;await updateDoc(doc(db,'clans',c.id),{members:arrayUnion(user.uid)});alert('Te uniste al clan.')}
 
+ if(!authReady)return <div className="auth-loading">⚡ AURA BATTLE<br/><small>Comprobando sesión…</small></div>
  if(!user)return <AuthScreen {...{authMode,setAuthMode,email,setEmail,password,setPassword,password2,setPassword2,name,setName,authMsg,setAuthMsg,handleAuth,resetPassword,resetSent,loginWithGoogle,lang,setLang,t}}/>
- return <div className={`app ${theme}`}><audio ref={battleMusicRef} src="/assets/audio/aura-battle-theme.wav" loop preload="auto" /><header className="topbar"><div className="brand">⚡ <span>AURA BATTLE</span><b>V5.159</b></div><div className="top-actions"><span className="online-pill">● {online} {t.online}</span>{tab==='home'&&<div className="notification-wrap"><button type="button" className={`notification-btn${notificationOpen?' active':''}`} onClick={()=>setNotificationOpen(v=>!v)} aria-label="Notificaciones" title="Notificaciones">🔔{friendRequests.length+unreadPrivateMessages.length+battleInvites.length>0&&<span className="notification-badge">{Math.min(99,friendRequests.length+unreadPrivateMessages.length+battleInvites.length)}</span>}</button>{notificationOpen&&<div className="notification-panel"><div className="notification-title">🔔 Notificaciones</div>{battleInvites.length>0&&<div className="notification-messages"><div className="notification-subtitle">⚔️ Invitaciones de batalla</div>{battleInvites.slice(0,5).map(inv=><div className="notification-battle-invite" key={inv.id}><strong>{inv.senderName||'Jugador'} te invitó a una batalla</strong><div className="notification-battle-actions"><button type="button" className="primary" onClick={()=>void acceptBattleInvite(inv)}>⚔️ Aceptar</button><button type="button" onClick={()=>void declineBattleInvite(inv)}>Rechazar</button></div></div>)}</div>}{friendRequests.length>0&&<button type="button" className="notification-item" onClick={()=>{setNotificationOpen(false);navigateTab('friends')}}><strong>👥 {friendRequests.length} solicitud{friendRequests.length===1?'':'es'} de amistad</strong><small>Tienes nuevas solicitudes para revisar.</small></button>}{unreadPrivateMessages.length>0&&<div className="notification-messages"><div className="notification-subtitle">💬 Mensajes nuevos</div>{unreadPrivateMessages.slice(0,5).map(m=>{const f=friends.find(x=>x.id===m.uid);return <button type="button" className="notification-item" key={m.id} onClick={()=>f&&openPrivateChat(f)}><strong>{m.name||f?.name||'Jugador'}</strong><small>{m.text}</small></button>})}</div>}{friendRequests.length===0&&unreadPrivateMessages.length===0&&battleInvites.length===0&&<div className="notification-empty">No tienes notificaciones nuevas.</div>}</div>}</div>}<select value={lang} onChange={e=>setLang(e.target.value as Lang)}><option value="es">ES</option><option value="en">EN</option><option value="pt">PT</option><option value="fr">FR</option><option value="de">DE</option><option value="it">IT</option><option value="tr">TR</option><option value="ja">JA</option><option value="ko">KO</option><option value="zh">中文</option></select><button onClick={logout}>{t.logout}</button></div></header>
+ return <div className={`app ${theme}`}><audio ref={battleMusicRef} src="/assets/audio/aura-battle-theme.wav" loop preload="auto" /><header className="topbar"><div className="brand">⚡ <span>AURA BATTLE</span><b>V5.160</b></div><div className="top-actions"><span className="online-pill">● {online} {t.online}</span>{tab==='home'&&<div className="notification-wrap"><button type="button" className={`notification-btn${notificationOpen?' active':''}`} onClick={()=>setNotificationOpen(v=>!v)} aria-label="Notificaciones" title="Notificaciones">🔔{unreadFriendRequests.length+unreadPrivateMessages.length+battleInvites.length>0&&<span className="notification-badge">{Math.min(99,unreadFriendRequests.length+unreadPrivateMessages.length+battleInvites.length)}</span>}</button>{notificationOpen&&<div className="notification-panel"><div className="notification-title">🔔 Notificaciones</div>{battleInvites.length>0&&<div className="notification-messages"><div className="notification-subtitle">⚔️ Invitaciones de batalla</div>{battleInvites.slice(0,5).map(inv=><div className="notification-battle-invite" key={inv.id}><strong>{inv.senderName||'Jugador'} te invitó a una batalla</strong><div className="notification-battle-actions"><button type="button" className="primary" onClick={()=>void acceptBattleInvite(inv)}>⚔️ Aceptar</button><button type="button" onClick={()=>void declineBattleInvite(inv)}>Rechazar</button></div></div>)}</div>}{unreadFriendRequests.length>0&&<button type="button" className="notification-item" onClick={()=>{if(user)friendRequests.forEach(r=>localStorage.setItem(`auraFriendRequestRead:${user.uid}:${r.id}`,'1'));setUnreadFriendRequests([]);setNotificationOpen(false);navigateTab('friends')}}><strong>👥 {unreadFriendRequests.length} solicitud{unreadFriendRequests.length===1?'':'es'} de amistad</strong><small>Tienes nuevas solicitudes para revisar.</small></button>}{unreadPrivateMessages.length>0&&<div className="notification-messages"><div className="notification-subtitle">💬 Mensajes nuevos</div>{unreadPrivateMessages.slice(0,5).map(m=>{const f=friends.find(x=>x.id===m.uid);return <button type="button" className="notification-item" key={m.id} onClick={()=>f&&openPrivateChat(f)}><strong>{m.name||f?.name||'Jugador'}</strong><small>{m.text}</small></button>})}</div>}{unreadFriendRequests.length===0&&unreadPrivateMessages.length===0&&battleInvites.length===0&&<div className="notification-empty">No tienes notificaciones nuevas.</div>}</div>}</div>}<select value={lang} onChange={e=>setLang(e.target.value as Lang)}><option value="es">ES</option><option value="en">EN</option><option value="pt">PT</option><option value="fr">FR</option><option value="de">DE</option><option value="it">IT</option><option value="tr">TR</option><option value="ja">JA</option><option value="ko">KO</option><option value="zh">中文</option></select><button onClick={logout}>{t.logout}</button></div></header>
  <div className="layout"><aside className="sidebar"><div className="mini-profile"><div className="profile-icon">⚡</div><div><strong>{user.displayName||'Jugador'}</strong><small>⚡ {profile.aura} Aura · Lv.{profile.level}</small></div></div>{nav.map(n=><button key={n} className={tab===n?'nav active':'nav'} onClick={()=>navigateTab(n)}>{icon(n)} {t[n]}</button>)}<div className="ad-slot side-ad">PUBLICIDAD<br/><small>Espacio para marcas</small></div></aside>
  <main className="content">
  {tab==='home'&&<section className="home-hero"><div className="hero-copy"><div className="eyebrow">⚡ ONLINE AURA ARENA</div><h1>{t.welcome}</h1><p>Compite en vivo, gana Aura y construye tu reputación.</p><div className="hero-actions"><button className="primary" onClick={()=>navigateTab('battle')}>⚔️ {t.play}</button><button onClick={()=>navigateTab('profile')}>👤 Mi perfil</button></div><div className="quick-stats"><Stat label="⚡ Tu Aura" value={profile.aura}/><Stat label="🏆 Victorias" value={profile.wins}/><Stat label="🔥 Nivel" value={profile.level}/></div></div><div className="hero-art"><img src="/assets/aura-arena-home.png" alt="AURA BATTLE Arena"/><div className="hero-glow">LIVE</div></div><div className="home-grid"><Card icon="⚔️" title="Batallas 1v1" text="Crea una sala y reta a otra persona con cámara." action={()=>navigateTab('battle')}/><Card icon="🤖" title="IA Aura" text="Convierte señales visuales de tu cámara en una métrica de Aura." action={()=>navigateTab('ai')}/><Card icon="🏆" title="Ranking global" text="Sube posiciones con tus victorias y puntuación." action={()=>navigateTab('ranking')}/><Card icon="🛡️" title="Clanes" text="Forma equipos y crea una comunidad alrededor de tu Aura." action={()=>navigateTab('clans')}/></div><div className="ad-slot banner-ad">ESPACIO PUBLICITARIO · AURA BATTLE</div></section>}
  {tab==='profile'&&<Panel title="👤 Mi perfil"><div className="profile-head"><div className="big-profile-icon">⚡</div><div><h2>{user.displayName||'Jugador'}</h2><p>{user.email}</p><span className="badge">Nivel {profile.level}</span></div></div><div className="stats"><Stat label="Aura" value={profile.aura}/><Stat label="Victorias" value={profile.wins}/><Stat label="Derrotas" value={profile.losses}/><Stat label="Ratio" value={`${profile.wins+profile.losses?Math.round(profile.wins/(profile.wins+profile.losses)*100):0}%`}/></div><div className="profile-actions"><button className="primary" onClick={()=>navigateTab('battle')}>⚔️ Ir a batallar</button><button onClick={()=>navigateTab('settings')}>⚙️ Ajustes</button></div></Panel>}
  {tab==='friends'&&<Panel title={`👥 Amigos${friendRequests.length?` · 🔔 ${friendRequests.length}`:''}`}><p>Encuentra jugadores y añade rivales a tu red.</p>{friendRequests.length>0&&<div className="friend-requests"><div className="section-title">🔔 Solicitudes de amistad ({friendRequests.length})</div>{friendRequests.map(r=><div className="list-row friend-request-row" key={r.id}>🧑 <span><strong>{r.senderName}</strong><small>⚡ {r.senderAura} Aura · quiere ser tu amigo</small></span><div className="inline request-actions"><button className="primary" onClick={()=>acceptFriendRequest(r)}>✓ Aceptar</button><button onClick={()=>rejectFriendRequest(r)}>✕</button></div></div>)}</div>}<div className="inline"><input placeholder="Nombre del jugador" value={friendSearch} onChange={e=>setFriendSearch(e.target.value)} onKeyDown={e=>e.key==='Enter'&&searchFriends()}/><button type="button" onClick={searchFriends} disabled={friendSearching}>{friendSearching?'⏳ Buscando…':'🔎 Buscar'}</button></div>{friendMsg&&<div className="notice">{friendMsg}</div>}{friendResults.length>0&&<div className="list">{friendResults.map(f=><div className="list-row" key={f.id}>🧑 <span>{f.name}<small>⚡ {f.aura}</small></span><button onClick={()=>addFriend(f)}>📨 Solicitar</button></div>)}</div>}<div className="section-title">Mis amigos</div><div className="list">{friends.length?friends.map(f=><div className="list-row" key={f.id}>🟢 <span>{f.name}<small>⚡ {f.aura}</small></span><div className="inline friend-actions"><button className="primary" onClick={()=>openPrivateChat(f)}>💬 Chat</button><button type="button" className="danger-btn" onClick={()=>removeFriend(f)} title="Eliminar amigo">🗑️</button></div></div>):<div className="empty">Todavía no tienes amigos. Busca un jugador arriba.</div>}</div></Panel>}
- {tab==='chat'&&<Panel title={privateFriend?`💬 Chat con ${privateFriend.name}`:'💬 Chat global'}>{privateFriend?<><button type="button" onClick={()=>{setPrivateFriend(null);setPrivateChat([])}}>← Chat global</button><div className="private-chat-head">🟢 {privateFriend.name}<small>⚡ {privateFriend.aura} Aura</small><button type="button" className="battle-invite-btn" onClick={()=>void inviteBattleWithFriend(privateFriend)}>⚔️ Invitar a batalla</button></div><div className="chat-box private-chat-box">{privateChat.length?privateChat.map(m=><div className={m.uid===user.uid?'bubble mine':'bubble'} key={m.id}><strong>{m.name}:</strong><span> {m.text}</span></div>):<div className="empty">{privateLoading?'Cargando conversación…':'Todavía no hay mensajes. ¡Saluda a tu amigo!'}</div>}<div ref={privateChatEndRef} className="chat-scroll-anchor" aria-hidden="true" /></div><form className="inline private-chat-form" onSubmit={sendPrivateChat}><input maxLength={300} value={privateInput} onChange={e=>setPrivateInput(e.target.value)} placeholder={`Escribe a ${privateFriend.name}…`}/><button className="primary" type="submit" disabled={!privateInput.trim()||privateLoading}>Enviar</button></form>{privateMsg&&<div className="notice">{privateMsg}</div>}<small className="small">Chat privado entre amigos. Solo ustedes dos pueden verlo.</small></>:<><div className="chat-box">{chat.length?chat.map(m=><div className={m.uid===user.uid?'bubble mine':'bubble'} key={m.id}><strong>{m.name}:</strong><span> {m.text}</span></div>):<div className="empty">Sé la primera persona en escribir.</div>}</div><form className="inline" onSubmit={sendChat}><input maxLength={300} value={chatInput} onChange={e=>setChatInput(e.target.value)} placeholder="Escribe un mensaje…"/><button className="primary" type="submit" disabled={!chatInput.trim()||chatLoading}>Enviar</button></form>{chatMsg&&<div className="notice">{chatMsg}</div>}<small className="small">Chat público de la comunidad. No compartas datos personales.</small></>}</Panel>}
+ {tab==='chat'&&<Panel title={privateFriend?`💬 Chat con ${privateFriend.name}`:'💬 Chat global'}>{privateFriend?<><button type="button" onClick={()=>{setPrivateFriend(null);setPrivateChat([])}}>← Chat global</button><div className="private-chat-head">🟢 {privateFriend.name}<small>⚡ {privateFriend.aura} Aura</small><button type="button" className="battle-invite-btn" onClick={()=>void inviteBattleWithFriend(privateFriend)}>⚔️ Invitar a batalla</button></div><div className="chat-box private-chat-box">{privateChat.length?privateChat.map(m=><div className={m.uid===user.uid?'bubble mine':'bubble'} key={m.id}><strong>{m.name}:</strong><span> {m.text}</span></div>):<div className="empty">{privateLoading?'Cargando conversación…':'Todavía no hay mensajes. ¡Saluda a tu amigo!'}</div>}<div ref={privateChatEndRef} className="chat-scroll-anchor" aria-hidden="true" /></div><form className="inline private-chat-form" onSubmit={sendPrivateChat}><input ref={privateInputRef} maxLength={300} value={privateInput} onChange={e=>setPrivateInput(e.target.value)} placeholder={`Escribe a ${privateFriend.name}…`}/><button className="primary" type="submit" disabled={!privateInput.trim()||privateLoading}>Enviar</button></form>{privateMsg&&<div className="notice">{privateMsg}</div>}<small className="small">Chat privado entre amigos. Solo ustedes dos pueden verlo.</small></>:<><div className="chat-box">{chat.length?chat.map(m=><div className={m.uid===user.uid?'bubble mine':'bubble'} key={m.id}><strong>{m.name}:</strong><span> {m.text}</span></div>):<div className="empty">Sé la primera persona en escribir.</div>}</div><form className="inline" onSubmit={sendChat}><input maxLength={300} value={chatInput} onChange={e=>setChatInput(e.target.value)} placeholder="Escribe un mensaje…"/><button className="primary" type="submit" disabled={!chatInput.trim()||chatLoading}>Enviar</button></form>{chatMsg&&<div className="notice">{chatMsg}</div>}<small className="small">Chat público de la comunidad. No compartas datos personales.</small></>}</Panel>}
  {tab==='battle'&&<Panel title="⚔️ Batallas 1v1">{battleResult?<div className={`battle-result-card ${battleResult.outcome}`}>
    <div className="battle-result-icon">{battleResult.outcome==='win'?'🏆':battleResult.outcome==='loss'?'💥':'🤝'}</div>
    <div className="battle-result-label">RESULTADO FINAL</div>
@@ -880,7 +910,7 @@ function AuthScreen(p:any){
   return (
     <div className="auth-shell">
       <div className="auth-brand">
-        <div className="brand">⚡ <span>AURA BATTLE</span><b>V5.159</b></div>
+        <div className="brand">⚡ <span>AURA BATTLE</span><b>V5.160</b></div>
         <p>La arena donde tu Aura habla por ti.</p>
       </div>
 

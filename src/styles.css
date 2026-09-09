@@ -461,3 +461,5 @@ button,input,select{border-radius:14px}
   .private-chat-form input,.private-chat-form button{min-height:58px;}
   .private-chat-form input{font-size:16px;}
 }
+
+.auth-loading{min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;background:#070914;color:#fff;font-size:28px;font-weight:900;text-align:center;gap:8px}.auth-loading small{font-size:13px;color:#8f96ae;font-weight:500}
