@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode, RefObject } from 'react'
 import { auth, db } from './lib/firebase'
 import { socket } from './lib/socket'
-import { createUserWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut, updateProfile } from 'firebase/auth'
+import { createUserWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut, updateProfile } from 'firebase/auth'
 import { addDoc, collection, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, arrayUnion, startAt, endAt, where } from 'firebase/firestore'
 
 type Lang = 'es'|'en'|'pt'|'fr'|'de'|'it'|'tr'|'ja'|'ko'|'zh'
@@ -87,13 +87,7 @@ export default function App(){
 
    // Recupera explícitamente el resultado del inicio de sesión con Google
    // después de volver a AURA BATTLE desde la página de Google/Firebase.
-   getRedirectResult(auth).then((result)=>{
-     if(result?.user){
-       setUser(result.user)
-       setAuthMode('choice')
-       setAuthMsg('')
-     }
-   }).catch((e:any)=>{
+   getRedirectResult(auth).catch((e:any)=>{
      console.error('Google redirect result error:',e)
      if(e?.code){
        setAuthMsg(e.message?.replace('Firebase: Error (auth/','').replace(').','')||'No se pudo completar el inicio de sesión con Google.')
@@ -130,9 +124,10 @@ export default function App(){
   })
   socket.on('battle-ended',async({aura1,aura2}:{aura1:number;aura2:number})=>{
     setAura(Math.round(aura1)); setOpponentAura(Math.round(aura2)); setBattleStarted(false); setBattleSeconds(0)
-    const localAura=host?Math.round(aura1):Math.round(aura2)
-    const rivalAura=host?Math.round(aura2):Math.round(aura1)
+    const localAura=hostRef.current?Math.round(aura1):Math.round(aura2)
+    const rivalAura=hostRef.current?Math.round(aura2):Math.round(aura1)
     const win=localAura>rivalAura
+    const draw=localAura===rivalAura
     const currentUser=auth.currentUser
     if(currentUser){
       try{
@@ -141,11 +136,11 @@ export default function App(){
         const currentAura=Number(current.aura||0)
         const currentWins=Number(current.victorias||0)
         const currentLosses=Number(current.derrotas||0)
-        const delta=win?25:-10
+        const delta=win?25:(draw?10:-5)
         const nextAura=Math.max(0,currentAura+delta)
         const nextWins=currentWins+(win?1:0)
-        const nextLosses=currentLosses+(win?0:1)
-        const nextLevel=Math.max(1,Math.floor(nextAura/100)+1)
+        const nextLosses=currentLosses+(win||draw?0:1)
+        const nextLevel=Math.min(100,Math.max(1,Math.floor(nextAura/100)+1))
         await updateDoc(doc(db,'users',currentUser.uid),{aura:nextAura,victorias:nextWins,derrotas:nextLosses,level:nextLevel})
         setProfile({aura:nextAura,wins:nextWins,losses:nextLosses,level:nextLevel})
       }catch(e){console.error('Battle result save error:',e);setRoomStatus('⚠️ La batalla terminó, pero no pudimos guardar el resultado.')}
@@ -153,7 +148,7 @@ export default function App(){
     if(localStreamRef.current){localStreamRef.current.getTracks().forEach(t=>t.stop());localStreamRef.current=null}
     peerRef.current?.close();peerRef.current=null
     setCameraOn(false)
-    setRoomStatus(win?'🏆 ¡Victoria! +25 Aura':'⚡ Derrota. -10 Aura')
+    setRoomStatus(draw?'🤝 ¡Empate! +10 Aura':(win?'🏆 ¡Victoria! +25 Aura':'⚡ Derrota. -5 Aura'))
   })
   socket.on('opponent-aura',(v:number)=>setOpponentAura(Math.round(v)))
   socket.on('peer-left',()=>{setOpponentJoined(false);setBothCamerasReady(false);setBattleStarted(false);setRoomStatus('El rival salió de la sala.')})
@@ -218,7 +213,7 @@ useEffect(()=>{if(!cameraOn||!videoRef.current)return; const v=videoRef.current;
 
  async function handleAuth(e:FormEvent){e.preventDefault();setAuthMsg('');try{if(authMode==='register'){if(name.trim().length<2)return setAuthMsg('Escribe un nombre de jugador.');if(password!==password2)return setAuthMsg('Las contraseñas no coinciden.');if(password.length<6)return setAuthMsg('La contraseña debe tener al menos 6 caracteres.');const c=await createUserWithEmailAndPassword(auth,email,password);const clean=name.trim();await updateProfile(c.user,{displayName:clean});await setDoc(doc(db,'users',c.user.uid),{uid:c.user.uid,nombre:clean,nombreLower:clean.toLowerCase(),email,aura:0,victorias:0,derrotas:0,level:1,createdAt:serverTimestamp()},{merge:true})}else await signInWithEmailAndPassword(auth,email,password)}catch(e:any){setAuthMsg(e?.message?.replace('Firebase: Error (auth/','').replace(').','')||'No se pudo completar la operación.')}}
  async function resetPassword(){if(!email.trim()){setAuthMsg('Escribe tu correo para recuperar la contraseña.');return}try{await sendPasswordResetEmail(auth,email.trim());setResetSent(true);setAuthMsg('Te enviamos un enlace para restablecer tu contraseña.')}catch(e:any){setAuthMsg('No pudimos enviar el enlace de recuperación. Revisa el correo.')}}
- async function loginWithGoogle(){setAuthMsg('');try{const provider=new GoogleAuthProvider();provider.setCustomParameters({prompt:'select_account'});const result=await signInWithPopup(auth,provider);setUser(result.user);setAuthMode('choice');setAuthMsg('')}catch(e:any){console.error('Google sign-in error:',e);setAuthMsg(e?.message?.replace('Firebase: Error (auth/','').replace(').','')||'No se pudo iniciar sesión con Google.')}}
+ async function loginWithGoogle(){setAuthMsg('');try{const provider=new GoogleAuthProvider();provider.setCustomParameters({prompt:'select_account'});await signInWithRedirect(auth,provider)}catch(e:any){console.error('Google sign-in error:',e);setAuthMsg(e?.message?.replace('Firebase: Error (auth/','').replace(').','')||'No se pudo iniciar sesión con Google.')}}
  async function finishBattle(){if(!user||!battleStarted)return;socket.emit('finish-battle');setRoomStatus('⏳ Finalizando la batalla…')}
  async function logout(){localStreamRef.current?.getTracks().forEach(x=>x.stop());peerRef.current?.close();await signOut(auth);socket.disconnect();navigateTab('home')}
  async function resetPeer(){pendingIceRef.current=[]; if(peerRef.current){peerRef.current.ontrack=null;peerRef.current.onicecandidate=null;peerRef.current.close();peerRef.current=null} setBothCamerasReady(false);setBattleStarted(false);setBattleSeconds(0);setOpponentAura(0)}
@@ -380,7 +375,7 @@ useEffect(()=>{if(!cameraOn||!videoRef.current)return; const v=videoRef.current;
  async function joinClan(c:Clan){if(!user)return;await updateDoc(doc(db,'clans',c.id),{members:arrayUnion(user.uid)});alert('Te uniste al clan.')}
 
  if(!user)return <AuthScreen {...{authMode,setAuthMode,email,setEmail,password,setPassword,password2,setPassword2,name,setName,authMsg,setAuthMsg,handleAuth,resetPassword,resetSent,loginWithGoogle,lang,setLang,t}}/>
- return <div className={`app ${theme}`}><audio ref={battleMusicRef} src="/assets/audio/aura-battle-theme.wav" loop preload="auto" /><header className="topbar"><div className="brand">⚡ <span>AURA BATTLE</span><b>V5.136</b></div><div className="top-actions"><span className="online-pill">● {online} {t.online}</span><select value={lang} onChange={e=>setLang(e.target.value as Lang)}><option value="es">ES</option><option value="en">EN</option><option value="pt">PT</option><option value="fr">FR</option><option value="de">DE</option><option value="it">IT</option><option value="tr">TR</option><option value="ja">JA</option><option value="ko">KO</option><option value="zh">中文</option></select><button onClick={logout}>{t.logout}</button></div></header>
+ return <div className={`app ${theme}`}><audio ref={battleMusicRef} src="/assets/audio/aura-battle-theme.wav" loop preload="auto" /><header className="topbar"><div className="brand">⚡ <span>AURA BATTLE</span><b>V5.139</b></div><div className="top-actions"><span className="online-pill">● {online} {t.online}</span><select value={lang} onChange={e=>setLang(e.target.value as Lang)}><option value="es">ES</option><option value="en">EN</option><option value="pt">PT</option><option value="fr">FR</option><option value="de">DE</option><option value="it">IT</option><option value="tr">TR</option><option value="ja">JA</option><option value="ko">KO</option><option value="zh">中文</option></select><button onClick={logout}>{t.logout}</button></div></header>
  <div className="layout"><aside className="sidebar"><div className="mini-profile"><div className="profile-icon">⚡</div><div><strong>{user.displayName||'Jugador'}</strong><small>⚡ {profile.aura} Aura · Lv.{profile.level}</small></div></div>{nav.map(n=><button key={n} className={tab===n?'nav active':'nav'} onClick={()=>navigateTab(n)}>{icon(n)} {t[n]}</button>)}<div className="ad-slot side-ad">PUBLICIDAD<br/><small>Espacio para marcas</small></div></aside>
  <main className="content">
  {tab==='home'&&<section className="home-hero"><div className="hero-copy"><div className="eyebrow">⚡ ONLINE AURA ARENA</div><h1>{t.welcome}</h1><p>Compite en vivo, gana Aura y construye tu reputación.</p><div className="hero-actions"><button className="primary" onClick={()=>navigateTab('battle')}>⚔️ {t.play}</button><button onClick={()=>navigateTab('profile')}>👤 Mi perfil</button></div><div className="quick-stats"><Stat label="⚡ Tu Aura" value={profile.aura}/><Stat label="🏆 Victorias" value={profile.wins}/><Stat label="🔥 Nivel" value={profile.level}/></div></div><div className="hero-art"><img src="/assets/aura-arena-home.png" alt="AURA BATTLE Arena"/><div className="hero-glow">LIVE</div></div><div className="home-grid"><Card icon="⚔️" title="Batallas 1v1" text="Crea una sala y reta a otra persona con cámara." action={()=>navigateTab('battle')}/><Card icon="🤖" title="IA Aura" text="Convierte señales visuales de tu cámara en una métrica de Aura." action={()=>navigateTab('ai')}/><Card icon="🏆" title="Ranking global" text="Sube posiciones con tus victorias y puntuación." action={()=>navigateTab('ranking')}/><Card icon="🛡️" title="Clanes" text="Forma equipos y crea una comunidad alrededor de tu Aura." action={()=>navigateTab('clans')}/></div><div className="ad-slot banner-ad">ESPACIO PUBLICITARIO · AURA BATTLE</div></section>}
@@ -407,7 +402,7 @@ function AuthScreen(p:any){
   return (
     <div className="auth-shell">
       <div className="auth-brand">
-        <div className="brand">⚡ <span>AURA BATTLE</span><b>V5.136</b></div>
+        <div className="brand">⚡ <span>AURA BATTLE</span><b>V5.139</b></div>
         <p>La arena donde tu Aura habla por ti.</p>
       </div>
 

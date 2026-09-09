@@ -146,6 +146,6 @@ app.get('*', (_req, res) => {
 
 const port = Number(process.env.PORT) || 3000
 server.listen(port, '0.0.0.0', () => {
-  console.log(`AURA BATTLE V5.136 listening on port ${port}`)
+  console.log(`AURA BATTLE V5.139 listening on port ${port}`)
   console.log(`Serving frontend from ${distPath}`)
 })
