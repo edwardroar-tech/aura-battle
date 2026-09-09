@@ -14,7 +14,7 @@ const battleTimers = new Map()
 
 const distPath = path.resolve(__dirname, 'dist')
 app.use(express.static(distPath))
-app.get('/health', (_req, res) => res.json({ ok: true, service: 'aura-battle-v5-150' }))
+app.get('/health', (_req, res) => res.json({ ok: true, service: 'aura-battle-v5-152' }))
 
 function makeCode() {
   return Math.random().toString(36).slice(2, 8).toUpperCase()
@@ -134,6 +134,19 @@ io.on('connection', (socket) => {
     players.forEach(id => { const s = io.sockets.sockets.get(id); if (s) s.data.battleReady = false })
   })
 
+  socket.on('content-violation', ({ reason } = {}) => {
+    const roomCode = socket.data.room
+    if (!roomCode) return
+    const timer = battleTimers.get(roomCode)
+    if (timer) { clearTimeout(timer); battleTimers.delete(roomCode) }
+    const room = rooms.get(roomCode) || []
+    room.forEach(id => {
+      const s = io.sockets.sockets.get(id)
+      if (s) s.data.battleReady = false
+    })
+    io.to(roomCode).emit('content-violation', { reason: String(reason || 'Contenido no permitido detectado.') })
+  })
+
   socket.on('aura-score', (score) => {
     const room = socket.data.room
     socket.data.auraScore = Number(score) || 0
@@ -163,6 +176,6 @@ app.get('*', (_req, res) => {
 
 const port = Number(process.env.PORT) || 3000
 server.listen(port, '0.0.0.0', () => {
-  console.log(`AURA BATTLE V5.150 listening on port ${port}`)
+  console.log(`AURA BATTLE V5.152 listening on port ${port}`)
   console.log(`Serving frontend from ${distPath}`)
 })

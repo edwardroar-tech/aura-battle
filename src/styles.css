@@ -395,3 +395,5 @@ button,input,select{border-radius:14px}
 .danger-btn{border:1px solid rgba(255,80,120,.45)!important;color:#ff7b9c!important;background:rgba(255,40,90,.08)!important;min-width:42px;padding:10px 12px!important}
 .danger-btn:hover{background:rgba(255,40,90,.18)!important}
 @media(max-width:700px){.friend-actions{gap:6px}.danger-btn{min-width:40px;padding:9px 10px!important}}
+
+.ai-training-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px}.ai-training-actions button{flex:1;min-width:220px}.danger-btn{border:1px solid rgba(255,80,120,.35)!important;color:#ff9bb4!important;background:rgba(255,70,110,.06)!important}

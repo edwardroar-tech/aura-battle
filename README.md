@@ -1,28 +1,22 @@
-# AURA BATTLE v5.133
+# AURA BATTLE V5.152
 
-Versión basada en v5.132 con inicio de sesión mediante Google.
+AURA BATTLE es una arena 1v1 con cámara, WebRTC, Socket.IO, Firebase y análisis local de movimiento con MediaPipe Pose.
 
-## Cambio principal
-- Botón **Continuar con Google** en la pantalla de iniciar sesión.
-- Usa Firebase Authentication con `GoogleAuthProvider`.
-- En móviles utiliza el flujo de redirección recomendado por Firebase.
-- Mantiene el inicio de sesión existente con correo y contraseña.
-- Conserva la imagen de AURA BATTLE en la pantalla de inicio de sesión.
-- No modifica las funciones de batalla, cámaras, IA Aura ni chat privado.
+## Cambios de V5.152
+- 🧠 IA Aura: entrenamiento de 15 segundos con medidor de Aura en tiempo real.
+- ⚡ Cada entrenamiento completado otorga +1 Aura y actualiza el perfil en Firestore.
+- 🛡️ Filtro local de seguridad visual en batallas con NSFWJS/TensorFlow.js. Si detecta con alta confianza contenido sexual potencialmente no permitido, se apaga la cámara local y se cancela la batalla para ambos.
+- 🗣️ En navegadores compatibles, moderación local de lenguaje durante la batalla mediante Web Speech API; una coincidencia de lenguaje inapropiado cancela la ronda y apaga la cámara.
+- 👥 Se conserva el sistema de amigos, solicitudes, aceptación, eliminación y chat privado.
+- ⚔️ Se conserva el botón ESTOY LISTO: la ronda empieza solo cuando ambos jugadores están listos.
+- 🧠 Se conserva la puntuación de movimientos básicos de farmeo de Aura.
 
-## Configuración de Firebase
-En Firebase Console:
-1. Authentication → Sign-in method.
-2. Activar **Google**.
-3. Guardar.
-4. Comprobar que el dominio de producción de AURA BATTLE esté autorizado.
+## Privacidad
+El análisis de movimiento y el filtro visual se ejecutan en el navegador. El video no se envía al servidor para realizar el análisis. El servidor recibe únicamente el resultado de Aura para resolver la batalla.
 
-Documentación oficial: https://firebase.google.com/docs/auth/web/google-signin
+La detección automática de contenido es una medida de seguridad y puede equivocarse; por eso usa umbrales conservadores y debe probarse antes de considerarla un sistema de moderación definitivo.
 
-
-## v5.148 — IA de movimiento
-La batalla usa MediaPipe Pose Landmarker en el dispositivo para detectar puntos del cuerpo y convertir el movimiento observado durante los 15 segundos en una puntuación 0-100. El video no se envía a un servidor para el análisis; se emite únicamente la puntuación al servidor de batalla.
-
-
-### Reconocimiento de movimientos básicos
-La IA de v5.148 usa MediaPipe Pose para detectar patrones aproximados de: Mewing, Six-Seven, Siuuu, Aura Walk, gestos de brazos y Pose de Aura. Cada patrón válido aporta un bono limitado al Aura, mientras el movimiento general aporta la puntuación base. La detección es heurística y se ejecuta en el dispositivo; no se envía el video al servidor.
+## Despliegue
+- Build: `npm run build`
+- Start: `npm start`
+- Node: >=20

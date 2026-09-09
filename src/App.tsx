@@ -14,6 +14,10 @@ type FriendRequest = {id:string; senderId:string; senderName:string; senderAura:
 type ChatMsg = {id:string; uid:string; name:string; text:string; createdAt?:any}
 type Clan = {id:string; name:string; owner:string; members:string[]; createdAt?:any}
 
+declare global {
+  interface Window { nsfwjs?: any; }
+}
+
 
 const copy:Record<Lang,Record<string,string>>={
  es:{home:'Inicio',profile:'Perfil',friends:'Amigos',chat:'Chat',battle:'Batallas',ai:'IA Aura',ranking:'Ranking',league:'Liga',clans:'Clanes',premium:'Premium',settings:'Ajustes',welcome:'Prepárate para la batalla',create:'CREAR SALA',join:'UNIRME',code:'CÓDIGO',logout:'Cerrar sesión',login:'Iniciar sesión',register:'Crear cuenta',online:'Jugadores online',play:'JUGAR AHORA'},
@@ -37,8 +41,8 @@ export default function App(){
  const [chat,setChat]=useState<ChatMsg[]>([]); const [chatInput,setChatInput]=useState(''); const [chatLoading,setChatLoading]=useState(false); const [chatMsg,setChatMsg]=useState(''); const [privateFriend,setPrivateFriend]=useState<Friend|null>(null); const [privateChat,setPrivateChat]=useState<ChatMsg[]>([]); const [privateInput,setPrivateInput]=useState(''); const [privateLoading,setPrivateLoading]=useState(false); const [privateMsg,setPrivateMsg]=useState('')
  const [leaders,setLeaders]=useState<Friend[]>([]); const [clans,setClans]=useState<Clan[]>([]); const [clanName,setClanName]=useState(''); const [clanMsg,setClanMsg]=useState('')
  const [premium,setPremium]=useState(false); const [musicOn,setMusicOn]=useState(true); const [mobileMore,setMobileMore]=useState(false); const [resetSent,setResetSent]=useState(false); const [theme,setTheme]=useState<'neon'|'midnight'>('neon')
- const [poseReady,setPoseReady]=useState(false); const [battleReady,setBattleReady]=useState(false); const [opponentReady,setOpponentReady]=useState(false); const [detectedMove,setDetectedMove]=useState('Esperando movimiento…'); const [moveBonus,setMoveBonus]=useState(0); const [room,setRoom]=useState(''); const [roomCode,setRoomCode]=useState(''); const [roomStatus,setRoomStatus]=useState('Listo.'); const [opponentJoined,setOpponentJoined]=useState(false); const [bothCamerasReady,setBothCamerasReady]=useState(false); const [host,setHost]=useState(false); const [cameraOn,setCameraOn]=useState(false); const [battleStarted,setBattleStarted]=useState(false); const [battleSeconds,setBattleSeconds]=useState(0); const [aura,setAura]=useState(0); const [opponentAura,setOpponentAura]=useState(0); const [online,setOnline]=useState(0); const [battleResult,setBattleResult]=useState<{outcome:'win'|'loss'|'draw';localScore:number;rivalScore:number;delta:number}|null>(null)
- const hostRef=useRef(false); const battleResultHandledRef=useRef(false); const poseHistoryRef=useRef<{x:number;y:number;z:number;visibility:number}[][]>([]); const patternScoreRef=useRef(0); const lastMoveBonusRef=useRef(0); const lastMoveAtRef=useRef(0); const cameraSourceRef=useRef<'ai'|'battle'|null>(null); const videoRef=useRef<HTMLVideoElement>(null); const aiVideoRef=useRef<HTMLVideoElement>(null); const battleMusicRef=useRef<HTMLAudioElement>(null); const remoteVideoRef=useRef<HTMLVideoElement>(null); const localStreamRef=useRef<MediaStream|null>(null); const peerRef=useRef<RTCPeerConnection|null>(null); const pendingIceRef=useRef<RTCIceCandidateInit[]>([]); const canvasRef=useRef<HTMLCanvasElement|null>(null); const poseLandmarkerRef=useRef<PoseLandmarker|null>(null); const poseLoadingRef=useRef(false); const previousPoseRef=useRef<{x:number;y:number;z:number;visibility:number}[]|null>(null); const movementScoreRef=useRef(0); const poseFrameCountRef=useRef(0); const poseVisibleFrameCountRef=useRef(0); const lastPoseTimeRef=useRef(0)
+ const [poseReady,setPoseReady]=useState(false); const [trainingActive,setTrainingActive]=useState(false); const [trainingSeconds,setTrainingSeconds]=useState(0); const [trainingDone,setTrainingDone]=useState(false); const [safetyReady,setSafetyReady]=useState(false); const [battleReady,setBattleReady]=useState(false); const [opponentReady,setOpponentReady]=useState(false); const [detectedMove,setDetectedMove]=useState('Esperando movimiento…'); const [moveBonus,setMoveBonus]=useState(0); const [room,setRoom]=useState(''); const [roomCode,setRoomCode]=useState(''); const [roomStatus,setRoomStatus]=useState('Listo.'); const [opponentJoined,setOpponentJoined]=useState(false); const [bothCamerasReady,setBothCamerasReady]=useState(false); const [host,setHost]=useState(false); const [cameraOn,setCameraOn]=useState(false); const [battleStarted,setBattleStarted]=useState(false); const [battleSeconds,setBattleSeconds]=useState(0); const [aura,setAura]=useState(0); const [opponentAura,setOpponentAura]=useState(0); const [online,setOnline]=useState(0); const [battleResult,setBattleResult]=useState<{outcome:'win'|'loss'|'draw';localScore:number;rivalScore:number;delta:number}|null>(null)
+ const safetyModelRef=useRef<any>(null); const safetyLoadingRef=useRef(false); const safetyScanAtRef=useRef(0); const speechRecognitionRef=useRef<any>(null); const safetyViolationRef=useRef(false); const hostRef=useRef(false); const battleResultHandledRef=useRef(false); const poseHistoryRef=useRef<{x:number;y:number;z:number;visibility:number}[][]>([]); const patternScoreRef=useRef(0); const lastMoveBonusRef=useRef(0); const lastMoveAtRef=useRef(0); const cameraSourceRef=useRef<'ai'|'battle'|null>(null); const videoRef=useRef<HTMLVideoElement>(null); const aiVideoRef=useRef<HTMLVideoElement>(null); const battleMusicRef=useRef<HTMLAudioElement>(null); const remoteVideoRef=useRef<HTMLVideoElement>(null); const localStreamRef=useRef<MediaStream|null>(null); const peerRef=useRef<RTCPeerConnection|null>(null); const pendingIceRef=useRef<RTCIceCandidateInit[]>([]); const canvasRef=useRef<HTMLCanvasElement|null>(null); const poseLandmarkerRef=useRef<PoseLandmarker|null>(null); const poseLoadingRef=useRef(false); const previousPoseRef=useRef<{x:number;y:number;z:number;visibility:number}[]|null>(null); const movementScoreRef=useRef(0); const poseFrameCountRef=useRef(0); const poseVisibleFrameCountRef=useRef(0); const lastPoseTimeRef=useRef(0)
  const t=copy[lang]
 
  // Mantiene la navegación interna de la app sincronizada con el botón Atrás
@@ -229,6 +233,15 @@ useEffect(()=>{ if(!user)return; setChatLoading(true); setChatMsg(''); const q=q
 
   })
   socket.on('opponent-aura',(v:number)=>setOpponentAura(Math.round(v)))
+  socket.on('content-violation',({reason}:{reason:string})=>{
+    safetyViolationRef.current=true
+    if(localStreamRef.current){localStreamRef.current.getTracks().forEach(t=>t.stop());localStreamRef.current=null}
+    if(videoRef.current)videoRef.current.srcObject=null
+    if(remoteVideoRef.current)remoteVideoRef.current.srcObject=null
+    peerRef.current?.close();peerRef.current=null
+    setCameraOn(false);setBattleStarted(false);setBattleReady(false);setBothCamerasReady(false);setOpponentReady(false)
+    setRoomStatus(`🚨 Batalla cancelada: ${reason||'contenido no permitido detectado.'}`)
+  })
   socket.on('peer-left',()=>{setOpponentJoined(false);setBothCamerasReady(false);setBattleReady(false);setOpponentReady(false);setBattleStarted(false);setRoomStatus('El rival salió de la sala.')})
   socket.on('signal',async(m:any)=>{
     try{
@@ -251,7 +264,7 @@ useEffect(()=>{ if(!user)return; setChatLoading(true); setChatMsg(''); const q=q
       }
     }catch(e){console.warn('WebRTC signal error',e)}
   })
-  return()=>{['peer-joined','peer-camera-ready','battle-ready-status','both-cameras-ready','start','battle-ended','opponent-aura','peer-left','signal'].forEach(x=>socket.off(x))}
+  return()=>{['peer-joined','peer-camera-ready','battle-ready-status','both-cameras-ready','start','battle-ended','opponent-aura','peer-left','content-violation','signal'].forEach(x=>socket.off(x))}
  },[])
  useEffect(()=>{
   const audio=battleMusicRef.current;
@@ -289,6 +302,22 @@ useEffect(()=>{
 
 useEffect(()=>{
   let cancelled=false
+  async function loadSafetyModel(){
+    if(safetyModelRef.current||safetyLoadingRef.current)return
+    if(!window.nsfwjs){console.warn('NSFWJS no está disponible');return}
+    safetyLoadingRef.current=true
+    try{
+      const model=await window.nsfwjs.load()
+      if(!cancelled){safetyModelRef.current=model;setSafetyReady(true)}
+    }catch(e){console.warn('No se pudo cargar el filtro de seguridad',e)}
+    finally{safetyLoadingRef.current=false}
+  }
+  if(cameraOn && tab==='battle')void loadSafetyModel()
+  return()=>{cancelled=true}
+},[cameraOn,tab])
+
+useEffect(()=>{
+  let cancelled=false
   async function loadPose(){
     if(poseLandmarkerRef.current||poseLoadingRef.current)return
     poseLoadingRef.current=true
@@ -306,12 +335,13 @@ useEffect(()=>{
 },[cameraOn])
 
 useEffect(()=>{
-  if(!cameraOn||!videoRef.current)return
-  const v=videoRef.current
+  if(!cameraOn||(!battleStarted&&!trainingActive))return
+  const v=(battleStarted?videoRef.current:aiVideoRef.current)
+  if(!v)return
   let raf=0
   let stopped=false
   const resetMovement=()=>{previousPoseRef.current=null;poseHistoryRef.current=[];movementScoreRef.current=0;poseFrameCountRef.current=0;poseVisibleFrameCountRef.current=0;lastPoseTimeRef.current=0;lastMoveAtRef.current=0;patternScoreRef.current=0;lastMoveBonusRef.current=0;setAura(0);setMoveBonus(0);setDetectedMove('Esperando movimiento…')}
-  if(!battleStarted)resetMovement()
+  if(!battleStarted&&!trainingActive)resetMovement()
   const scorePose=()=>{
     if(stopped)return
     if(v.readyState>=2&&poseLandmarkerRef.current){
@@ -401,7 +431,93 @@ useEffect(()=>{
   }
   raf=requestAnimationFrame(scorePose)
   return()=>{stopped=true;cancelAnimationFrame(raf)}
-},[cameraOn,battleStarted])
+},[cameraOn,battleStarted,trainingActive])
+
+useEffect(()=>{
+  if(!trainingActive)return
+  const timer=window.setInterval(()=>setTrainingSeconds(v=>Math.max(0,v-1)),1000)
+  return()=>window.clearInterval(timer)
+},[trainingActive])
+
+useEffect(()=>{
+  if(!trainingActive||trainingSeconds!==0)return
+  setTrainingActive(false)
+  setTrainingDone(true)
+  void (async()=>{
+    if(!user)return
+    try{
+      const ref=doc(db,'users',user.uid)
+      const snap=await getDoc(ref)
+      const current=snap.exists()?snap.data():{}
+      const nextAura=Number(current.aura||0)+1
+      const nextLevel=Math.min(100,Math.max(1,Math.floor(nextAura/100)+1))
+      await setDoc(ref,{aura:nextAura,level:nextLevel},{merge:true})
+      setProfile(prev=>({...prev,aura:nextAura,level:nextLevel}))
+    }catch(e){console.error('Training reward save error:',e);setRoomStatus('⚠️ El entrenamiento terminó, pero no pudimos guardar +1 Aura.')}
+  })()
+},[trainingActive,trainingSeconds,user])
+
+useEffect(()=>{
+  if(!cameraOn||tab!=='battle'||!safetyReady||!safetyModelRef.current||!videoRef.current)return
+  let stopped=false
+  let timeout=0
+  const scan=async()=>{
+    if(stopped||safetyViolationRef.current)return
+    const now=performance.now()
+    if(now-safetyScanAtRef.current<1200){timeout=window.setTimeout(scan,350);return}
+    safetyScanAtRef.current=now
+    const v=videoRef.current
+    if(v&&v.readyState>=2){
+      try{
+        const predictions=await safetyModelRef.current.classify(v)
+        const scores=Object.fromEntries(predictions.map((x:any)=>[String(x.className).toLowerCase(),Number(x.probability||0)]))
+        const sexual=Math.max(scores.porn||0,scores.sexy||0,scores.hentai||0)
+        if(sexual>=0.90){
+          safetyViolationRef.current=true
+          setRoomStatus('🚨 Contenido no permitido detectado. Cámara apagada y batalla cancelada.')
+          socket.emit('content-violation',{reason:'Contenido sexual/desnudez potencialmente detectado'})
+          localStreamRef.current?.getTracks().forEach(t=>t.stop()); localStreamRef.current=null
+          if(videoRef.current)videoRef.current.srcObject=null
+          if(remoteVideoRef.current)remoteVideoRef.current.srcObject=null
+          peerRef.current?.close();peerRef.current=null
+          setCameraOn(false);setBattleStarted(false);setBattleReady(false);setBothCamerasReady(false)
+          return
+        }
+      }catch(e){console.warn('Safety scan error',e)}
+    }
+    timeout=window.setTimeout(scan,350)
+  }
+  void scan()
+  return()=>{stopped=true;window.clearTimeout(timeout)}
+},[cameraOn,tab,safetyReady])
+
+useEffect(()=>{
+  if(!cameraOn||tab!=='battle'||!battleStarted)return
+  const SR=(window as any).SpeechRecognition||(window as any).webkitSpeechRecognition
+  if(!SR)return
+  const recognition=new SR()
+  recognition.lang='es-CO';recognition.continuous=true;recognition.interimResults=true
+  const badWords=['puta','puto','mierda','marica','hijo de puta','cabron','cabrón','pendejo','perra','verga','coño','joder']
+  recognition.onresult=(event:any)=>{
+    let text=''
+    for(let i=event.resultIndex;i<event.results.length;i++)text+=' '+String(event.results[i][0]?.transcript||'').toLowerCase()
+    if(badWords.some(w=>text.includes(w))&&!safetyViolationRef.current){
+      safetyViolationRef.current=true
+      setRoomStatus('🚨 Lenguaje inapropiado detectado. Cámara apagada y batalla cancelada.')
+      socket.emit('content-violation',{reason:'Lenguaje inapropiado detectado'})
+      localStreamRef.current?.getTracks().forEach(t=>t.stop());localStreamRef.current=null
+      if(videoRef.current)videoRef.current.srcObject=null
+      if(remoteVideoRef.current)remoteVideoRef.current.srcObject=null
+      peerRef.current?.close();peerRef.current=null
+      setCameraOn(false);setBattleStarted(false);setBattleReady(false);setBothCamerasReady(false)
+    }
+  }
+  recognition.onerror=()=>{}
+  recognition.onend=()=>{if(!safetyViolationRef.current&&battleStarted)try{recognition.start()}catch{}}
+  speechRecognitionRef.current=recognition
+  try{recognition.start()}catch{}
+  return()=>{try{recognition.onend=null;recognition.stop()}catch{}speechRecognitionRef.current=null}
+},[cameraOn,tab,battleStarted])
 
  async function handleAuth(e:FormEvent){e.preventDefault();setAuthMsg('');try{if(authMode==='register'){if(name.trim().length<2)return setAuthMsg('Escribe un nombre de jugador.');if(password!==password2)return setAuthMsg('Las contraseñas no coinciden.');if(password.length<6)return setAuthMsg('La contraseña debe tener al menos 6 caracteres.');const c=await createUserWithEmailAndPassword(auth,email,password);const clean=name.trim();await updateProfile(c.user,{displayName:clean});await setDoc(doc(db,'users',c.user.uid),{uid:c.user.uid,nombre:clean,nombreLower:clean.toLowerCase(),email,aura:0,victorias:0,derrotas:0,level:1,createdAt:serverTimestamp()},{merge:true})}else await signInWithEmailAndPassword(auth,email,password)}catch(e:any){setAuthMsg(e?.message?.replace('Firebase: Error (auth/','').replace(').','')||'No se pudo completar la operación.')}}
  async function resetPassword(){if(!email.trim()){setAuthMsg('Escribe tu correo para recuperar la contraseña.');return}try{await sendPasswordResetEmail(auth,email.trim());setResetSent(true);setAuthMsg('Te enviamos un enlace para restablecer tu contraseña.')}catch(e:any){setAuthMsg('No pudimos enviar el enlace de recuperación. Revisa el correo.')}}
@@ -411,7 +527,7 @@ useEffect(()=>{
    if(videoRef.current) videoRef.current.srcObject=null
    if(remoteVideoRef.current) remoteVideoRef.current.srcObject=null
    peerRef.current?.close();peerRef.current=null
-   setCameraOn(false);setBothCamerasReady(false);setPoseReady(false);setBattleReady(false);setOpponentReady(false);setBattleStarted(false);setBattleSeconds(0);setBattleResult(null)
+   setCameraOn(false);setBothCamerasReady(false);setPoseReady(false);setBattleReady(false);setOpponentReady(false);setBattleStarted(false);setBattleSeconds(0);setBattleResult(null);setTrainingActive(false);setTrainingSeconds(0);setTrainingDone(false);safetyViolationRef.current=false
    battleResultHandledRef.current=false
    setRoomCode('');setRoom('');setOpponentJoined(false);setOpponentAura(0);setAura(0);movementScoreRef.current=0;previousPoseRef.current=null;poseFrameCountRef.current=0;poseVisibleFrameCountRef.current=0;setRoomStatus('Listo.')
    window.history.replaceState({auraTab:'home'},'',window.location.href)
@@ -513,6 +629,7 @@ useEffect(()=>{
    }
  }
  async function startBattle(){
+   safetyViolationRef.current=false
    if(battleReady){setRoomStatus('⏳ Ya estás listo. Esperando que el rival confirme.');return}
    if(!opponentJoined||!cameraOn||!bothCamerasReady){setRoomStatus('🎥 Espera a que las dos cámaras estén activas antes de marcarte como listo.');return}
    if(!poseLandmarkerRef.current){setRoomStatus('🧠 La IA de movimiento todavía está cargando. Espera unos segundos e inténtalo de nuevo.');return}
@@ -631,7 +748,7 @@ useEffect(()=>{
  async function joinClan(c:Clan){if(!user)return;await updateDoc(doc(db,'clans',c.id),{members:arrayUnion(user.uid)});alert('Te uniste al clan.')}
 
  if(!user)return <AuthScreen {...{authMode,setAuthMode,email,setEmail,password,setPassword,password2,setPassword2,name,setName,authMsg,setAuthMsg,handleAuth,resetPassword,resetSent,loginWithGoogle,lang,setLang,t}}/>
- return <div className={`app ${theme}`}><audio ref={battleMusicRef} src="/assets/audio/aura-battle-theme.wav" loop preload="auto" /><header className="topbar"><div className="brand">⚡ <span>AURA BATTLE</span><b>V5.150</b></div><div className="top-actions"><span className="online-pill">● {online} {t.online}</span><select value={lang} onChange={e=>setLang(e.target.value as Lang)}><option value="es">ES</option><option value="en">EN</option><option value="pt">PT</option><option value="fr">FR</option><option value="de">DE</option><option value="it">IT</option><option value="tr">TR</option><option value="ja">JA</option><option value="ko">KO</option><option value="zh">中文</option></select><button onClick={logout}>{t.logout}</button></div></header>
+ return <div className={`app ${theme}`}><audio ref={battleMusicRef} src="/assets/audio/aura-battle-theme.wav" loop preload="auto" /><header className="topbar"><div className="brand">⚡ <span>AURA BATTLE</span><b>V5.152</b></div><div className="top-actions"><span className="online-pill">● {online} {t.online}</span><select value={lang} onChange={e=>setLang(e.target.value as Lang)}><option value="es">ES</option><option value="en">EN</option><option value="pt">PT</option><option value="fr">FR</option><option value="de">DE</option><option value="it">IT</option><option value="tr">TR</option><option value="ja">JA</option><option value="ko">KO</option><option value="zh">中文</option></select><button onClick={logout}>{t.logout}</button></div></header>
  <div className="layout"><aside className="sidebar"><div className="mini-profile"><div className="profile-icon">⚡</div><div><strong>{user.displayName||'Jugador'}</strong><small>⚡ {profile.aura} Aura · Lv.{profile.level}</small></div></div>{nav.map(n=><button key={n} className={tab===n?'nav active':'nav'} onClick={()=>navigateTab(n)}>{icon(n)} {t[n]}</button>)}<div className="ad-slot side-ad">PUBLICIDAD<br/><small>Espacio para marcas</small></div></aside>
  <main className="content">
  {tab==='home'&&<section className="home-hero"><div className="hero-copy"><div className="eyebrow">⚡ ONLINE AURA ARENA</div><h1>{t.welcome}</h1><p>Compite en vivo, gana Aura y construye tu reputación.</p><div className="hero-actions"><button className="primary" onClick={()=>navigateTab('battle')}>⚔️ {t.play}</button><button onClick={()=>navigateTab('profile')}>👤 Mi perfil</button></div><div className="quick-stats"><Stat label="⚡ Tu Aura" value={profile.aura}/><Stat label="🏆 Victorias" value={profile.wins}/><Stat label="🔥 Nivel" value={profile.level}/></div></div><div className="hero-art"><img src="/assets/aura-arena-home.png" alt="AURA BATTLE Arena"/><div className="hero-glow">LIVE</div></div><div className="home-grid"><Card icon="⚔️" title="Batallas 1v1" text="Crea una sala y reta a otra persona con cámara." action={()=>navigateTab('battle')}/><Card icon="🤖" title="IA Aura" text="Convierte señales visuales de tu cámara en una métrica de Aura." action={()=>navigateTab('ai')}/><Card icon="🏆" title="Ranking global" text="Sube posiciones con tus victorias y puntuación." action={()=>navigateTab('ranking')}/><Card icon="🛡️" title="Clanes" text="Forma equipos y crea una comunidad alrededor de tu Aura." action={()=>navigateTab('clans')}/></div><div className="ad-slot banner-ad">ESPACIO PUBLICITARIO · AURA BATTLE</div></section>}
@@ -646,7 +763,7 @@ useEffect(()=>{
    <div className="battle-scoreboard"><div><span>TÚ</span><strong>⚡ {battleResult.localScore}</strong><small>{battleResult.outcome==='win'?'GANADOR':battleResult.outcome==='draw'?'EMPATE':'DERROTA'}</small></div><div className="score-vs">VS</div><div><span>RIVAL</span><strong>⚡ {battleResult.rivalScore}</strong><small>{battleResult.outcome==='loss'?'GANADOR':battleResult.outcome==='draw'?'EMPATE':'DERROTA'}</small></div></div>
    <button className="primary result-home-btn" onClick={returnToHome}>← Volver al inicio</button>
  </div>:<><div className="battle-intro"><div><h2>Entra a la arena</h2><p>Crea una sala y comparte el código con tu rival, o únete a una sala existente.</p></div><div className="live-dot">● LIVE</div></div><div className="room-card">{!roomCode?<div className="room-actions"><button className="primary" onClick={createRoom}>{t.create}</button><span>o</span><input maxLength={6} placeholder={t.code} value={room} onChange={e=>setRoom(e.target.value.toUpperCase())}/><button onClick={joinRoom}>{t.join}</button></div>:<><div className="room-code">{roomCode}</div><button className="copy-btn" onClick={()=>navigator.clipboard?.writeText(roomCode)}>📋 Copiar código</button><div className="status">{roomStatus}</div><div className="battle-actions"><button onClick={startCamera}>📷 {cameraOn?'CÁMARA ACTIVA':'ACTIVAR CÁMARA'}</button><button className="primary" disabled={!opponentJoined||!cameraOn||!bothCamerasReady||!poseReady||battleStarted} onClick={startBattle}>🔥 {battleStarted?'BATALLA EN CURSO':!poseReady?'CARGANDO IA…':battleReady?'⏳ LISTO — ESPERANDO RIVAL':opponentReady?'⚔️ RIVAL LISTO · YO TAMBIÉN':'✓ ESTOY LISTO'}</button>{battleStarted&&<button onClick={finishBattle}>🏁 Terminar y guardar resultado</button>}</div></>}</div><div className="video-grid"><VideoCard title={user.displayName||'Jugador 1'} videoRef={videoRef} score={aura} muted/><VideoCard title="Rival" videoRef={remoteVideoRef} score={opponentAura}/></div>{battleStarted&&<div className="battle-banner"><div>🧠 IA ANALIZANDO · ⏱️ {battleSeconds}s · ⚡ {aura} Aura</div><div className="move-detection">{detectedMove}{moveBonus>0&&<span> +{moveBonus}</span>}</div> <button className="music-toggle" onClick={()=>setMusicOn(v=>!v)}>{musicOn?'🔊 Música':'🔇 Música'}</button></div>}</>}</Panel>}
- {tab==='ai'&&<Panel title="🤖 IA Aura"><div className="training-notice"><strong>🎯 ÁREA DE ENTRENAMIENTO</strong><span>Usa esta sección para practicar y aprender a controlar tu Aura antes de entrar a batallas de farmeo de Aura.</span><small>⚠️ El Aura mostrado aquí es de entrenamiento y no suma Aura a tu perfil.</small></div><div className="ai-camera-card"><div className="ai-camera-frame"><video ref={aiVideoRef} autoPlay playsInline muted/>{!cameraOn&&<div className="ai-camera-placeholder">📷<span>Activa tu cámara para entrenar y ver tu Aura aquí</span></div>}<div className="ai-camera-badge">{cameraOn?'● CÁMARA ACTIVA':'● CÁMARA INACTIVA'}</div>{cameraOn&&<div className="ai-aura-overlay"><span>⚡ AURA</span><b>{aura}</b></div>}</div><div className="ai-aura-label">⚡ Aura detectada: <strong>{aura}</strong></div><div className="ai-meter"><div className="meter-fill" style={{width:`${aura}%`}}/></div></div><div className="ai-hero"><div><h2>Tu Aura de entrenamiento</h2><div className="aura-number">{aura}</div><p>La lectura es una métrica visual local de demostración para practicar antes de entrar a una batalla.</p></div><div className="ai-orb">⚡</div></div><button className="primary" onClick={startCamera}>{cameraOn?'✓ Cámara conectada':'📷 Activar cámara'}</button><div className="notice">Consejo: buena iluminación, rostro visible y encuadre estable ayudan a obtener una señal visual más consistente.</div></Panel>}
+ {tab==='ai'&&<Panel title="🤖 IA Aura"><div className="training-notice"><strong>🎯 ÁREA DE ENTRENAMIENTO</strong><span>Entrena durante 15 segundos con la IA de movimiento y mejora tu control.</span><small>🏆 Cada entrenamiento completado otorga <b>+1 Aura</b>.</small></div><div className="ai-camera-card"><div className="ai-camera-frame"><video ref={aiVideoRef} autoPlay playsInline muted/>{!cameraOn&&<div className="ai-camera-placeholder">📷<span>Activa tu cámara para entrenar y medir tu Aura</span></div>}<div className="ai-camera-badge">{cameraOn?'● CÁMARA ACTIVA':'● CÁMARA INACTIVA'}</div>{cameraOn&&<div className="ai-aura-overlay"><span>⚡ AURA</span><b>{aura}</b></div>}</div><div className="ai-aura-label">⚡ Aura detectada: <strong>{aura}</strong></div><div className="ai-meter"><div className="meter-fill" style={{width:`${aura}%`}}/></div></div><div className="ai-hero"><div><h2>{trainingActive?'Entrenamiento en curso':'Tu Aura de entrenamiento'}</h2><div className="aura-number">{trainingActive?trainingSeconds:aura}</div><p>{trainingActive?`Mantén tus movimientos durante ${trainingSeconds} segundos.`:'La IA analiza tus movimientos corporales localmente.'}</p></div><div className="ai-orb">⚡</div></div><div className="ai-training-actions"><button className="primary" onClick={startCamera} disabled={trainingActive}>{cameraOn?'✓ Cámara conectada':'📷 Activar cámara'}</button><button className="primary" onClick={()=>{if(!cameraOn){setRoomStatus('📷 Activa primero la cámara.');return}if(!poseLandmarkerRef.current){setRoomStatus('🧠 La IA todavía está cargando. Espera unos segundos.');return}movementScoreRef.current=0;previousPoseRef.current=null;poseHistoryRef.current=[];poseFrameCountRef.current=0;poseVisibleFrameCountRef.current=0;setAura(0);setTrainingDone(false);setTrainingSeconds(15);setTrainingActive(true);setRoomStatus('🧠 Entrenamiento iniciado. ¡15 segundos!')}} disabled={!cameraOn||trainingActive||!poseReady}> {trainingActive?`⏱️ ${trainingSeconds}s`:'🔥 INICIAR ENTRENAMIENTO'}</button></div>{trainingDone&&<div className="notice">🎉 ¡Entrenamiento completado! <strong>+1 Aura</strong> se añadió a tu perfil.</div>}<div className="notice">Consejo: buena iluminación, cuerpo visible y encuadre estable ayudan a obtener una señal más consistente.</div></Panel>}
  {tab==='ranking'&&<Panel title="🏆 Ranking global"><div className="podium"><div>🥈 {leaders[1]?.name||'—'}<b>{leaders[1]?.aura||0}</b></div><div>🥇 {leaders[0]?.name||'—'}<b>{leaders[0]?.aura||0}</b></div><div>🥉 {leaders[2]?.name||'—'}<b>{leaders[2]?.aura||0}</b></div></div><div className="leader-list">{leaders.map((x,i)=><div className="leader" key={x.id}><span>#{i+1} · {x.name}</span><b>⚡ {x.aura}</b></div>)}</div></Panel>}
  {tab==='league'&&<Panel title="🥇 Liga"><div className="league-card"><div className="league-badge">⚡</div><h2>Bronce</h2><p>Gana batallas para subir a Plata, Oro y las divisiones superiores.</p><div className="progress"><span style={{width:`${Math.min(100,(profile.wins*10)%101)}%`}}/></div><small>{profile.wins*10} / 100 puntos de ascenso</small></div><div className="three-col"><Stat label="Temporada" value="01"/><Stat label="Victorias" value={profile.wins}/><Stat label="Nivel" value={profile.level}/></div></Panel>}
  {tab==='clans'&&<Panel title="🛡️ Clanes"><div className="clan-create"><input placeholder="Nombre del clan" value={clanName} onChange={e=>{setClanName(e.target.value);setClanMsg('')}}/><button className="primary" onClick={createClan}>＋ Crear clan</button></div>{clanMsg&&<div className="notice">{clanMsg}</div>}<div className="section-title">Clanes de la comunidad</div><div className="home-grid">{clans.length?clans.map(c=><div className="clan-card" key={c.id}><h3>{c.name}</h3><p>👥 {c.members?.length||0} miembros</p><button onClick={()=>joinClan(c)}>Unirme</button></div>):<div className="empty">Sé el primer clan de la comunidad.</div>}</div></Panel>}
@@ -665,7 +782,7 @@ function AuthScreen(p:any){
   return (
     <div className="auth-shell">
       <div className="auth-brand">
-        <div className="brand">⚡ <span>AURA BATTLE</span><b>V5.150</b></div>
+        <div className="brand">⚡ <span>AURA BATTLE</span><b>V5.152</b></div>
         <p>La arena donde tu Aura habla por ti.</p>
       </div>
 
