@@ -11,7 +11,7 @@ type Tab = 'home'|'profile'|'friends'|'chat'|'battle'|'ai'|'ranking'|'league'|'c
 
 type Friend = {id:string; name:string; aura:number}
 type FriendRequest = {id:string; senderId:string; senderName:string; senderAura:number; receiverId:string; createdAt?:any}
-type ChatMsg = {id:string; uid:string; name:string; text:string; createdAt?:any}
+type ChatMsg = {id:string; uid:string; name:string; text:string; conversationId?:string; participants?:string[]; createdAt?:any}
 type Clan = {id:string; name:string; owner:string; members:string[]; createdAt?:any}
 
 declare global {
