@@ -445,6 +445,19 @@ button,input,select{border-radius:14px}
 .notification-battle-actions button{flex:1;padding:9px 8px!important;font-size:12px!important}
 @media(max-width:520px){.private-chat-head{align-items:flex-start}.battle-invite-btn{width:100%;margin-top:3px}.notification-battle-actions button{min-width:0}}
 
-/* V5.158 - chat readability */
+/* V5.159 - chat readability */
 .bubble strong{margin-right:4px}
 .bubble span{white-space:pre-wrap;overflow-wrap:anywhere}
+
+
+/* v5.159 — chat móvil: último mensaje visible y teclado usable */
+.private-chat-box{scroll-padding-top:24px;scroll-padding-bottom:110px;}
+.chat-scroll-anchor{height:8px;flex:0 0 8px;}
+.private-chat-form{position:relative;z-index:4;margin-bottom:8px;}
+.private-chat-form input{scroll-margin-top:120px;scroll-margin-bottom:120px;}
+@media(max-width:700px){
+  .private-chat-box{max-height:none;min-height:360px;height:52vh;overflow-y:auto;padding-bottom:34px;-webkit-overflow-scrolling:touch;}
+  .private-chat-form{position:sticky;bottom:76px;background:rgba(10,12,24,.96);padding-top:8px;padding-bottom:8px;margin-left:-2px;margin-right:-2px;backdrop-filter:blur(12px);}
+  .private-chat-form input,.private-chat-form button{min-height:58px;}
+  .private-chat-form input{font-size:16px;}
+}
