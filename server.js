@@ -10,6 +10,7 @@ const app = express()
 const server = http.createServer(app)
 const io = new Server(server, { cors: { origin: '*' } })
 const rooms = new Map()
+const battleTimers = new Map()
 
 const distPath = path.resolve(__dirname, 'dist')
 app.use(express.static(distPath))
@@ -25,6 +26,8 @@ io.on('connection', (socket) => {
     if (socket.data.room) {
       const oldRoom = rooms.get(socket.data.room)
       if (oldRoom) {
+        const oldTimer = battleTimers.get(socket.data.room)
+        if (oldTimer) { clearTimeout(oldTimer); battleTimers.delete(socket.data.room) }
         const remaining = oldRoom.filter(id => id !== socket.id)
         if (remaining.length) {
           rooms.set(socket.data.room, remaining)
@@ -35,6 +38,7 @@ io.on('connection', (socket) => {
     }
     socket.data.room = null
     socket.data.cameraReady = false
+    socket.data.auraScore = 0
     let roomCode
     do roomCode = makeCode(); while (rooms.has(roomCode))
     rooms.set(roomCode, [socket.id])
@@ -51,6 +55,8 @@ io.on('connection', (socket) => {
     if (socket.data.room) {
       const oldRoom = rooms.get(socket.data.room)
       if (oldRoom) {
+        const oldTimer = battleTimers.get(socket.data.room)
+        if (oldTimer) { clearTimeout(oldTimer); battleTimers.delete(socket.data.room) }
         const remaining = oldRoom.filter(id => id !== socket.id)
         if (remaining.length) {
           rooms.set(socket.data.room, remaining)
@@ -63,6 +69,7 @@ io.on('connection', (socket) => {
     socket.join(roomCode)
     socket.data.room = roomCode
     socket.data.cameraReady = false
+    socket.data.auraScore = 0
     cb?.({ ok: true, code: roomCode, host: false })
     socket.to(roomCode).emit('peer-joined')
   })
@@ -83,19 +90,46 @@ io.on('connection', (socket) => {
   })
 
   socket.on('start', () => {
-    const room = socket.data.room
-    if (room) io.to(room).emit('start')
+    const roomCode = socket.data.room
+    const room = roomCode && rooms.get(roomCode)
+    if (!room || room.length !== 2) return
+    if (battleTimers.has(roomCode)) return
+    const endsAt = Date.now() + 15000
+    io.to(roomCode).emit('start', { endsAt })
+    const timer = setTimeout(() => {
+      battleTimers.delete(roomCode)
+      const players = rooms.get(roomCode) || []
+      const a = Number(io.sockets.sockets.get(players[0])?.data.auraScore) || 0
+      const b = Number(io.sockets.sockets.get(players[1])?.data.auraScore) || 0
+      io.to(roomCode).emit('battle-ended', { aura1: a, aura2: b })
+    }, 15000)
+    battleTimers.set(roomCode, timer)
+  })
+
+  socket.on('finish-battle', () => {
+    const roomCode = socket.data.room
+    const timer = roomCode && battleTimers.get(roomCode)
+    if (!roomCode || !timer) return
+    clearTimeout(timer)
+    battleTimers.delete(roomCode)
+    const players = rooms.get(roomCode) || []
+    const a = Number(io.sockets.sockets.get(players[0])?.data.auraScore) || 0
+    const b = Number(io.sockets.sockets.get(players[1])?.data.auraScore) || 0
+    io.to(roomCode).emit('battle-ended', { aura1: a, aura2: b })
   })
 
   socket.on('aura-score', (score) => {
     const room = socket.data.room
-    if (room) socket.to(room).emit('opponent-aura', Number(score) || 0)
+    socket.data.auraScore = Number(score) || 0
+    if (room) socket.to(room).emit('opponent-aura', socket.data.auraScore)
   })
 
   socket.on('disconnect', () => {
     const roomCode = socket.data.room
     if (!roomCode) return
     const room = rooms.get(roomCode)
+    const timer = battleTimers.get(roomCode)
+    if (timer) { clearTimeout(timer); battleTimers.delete(roomCode) }
     if (!room) return
     const next = room.filter(id => id !== socket.id)
     socket.data.cameraReady = false
