@@ -361,7 +361,96 @@ useEffect(()=>{if(!cameraOn||!videoRef.current)return; const v=videoRef.current;
  </main></div></div>
 }
 
-function AuthScreen(p:any){const {authMode,setAuthMode,email,setEmail,password,setPassword,password2,setPassword2,name,setName,authMsg,setAuthMsg,handleAuth,resetPassword,resetSent,loginWithGoogle,lang,setLang,t}=p;return <div className="auth-shell"><div className="auth-brand"><div className="brand">⚡ <span>AURA BATTLE</span><b>V5.135</b></div><p>La arena donde tu Aura habla por ti.</p></div>{authMode==='choice'?<div className="auth-choice-layout"><div className="auth-choice-visual"><img src="/assets/aura-arena-home.png" alt="AURA BATTLE Arena"/><div className="auth-choice-overlay"><span>⚡ ONLINE AURA ARENA</span><strong>Prepárate para la batalla</strong></div></div><div className="auth-card auth-choice-card"><div className="eyebrow">ONLINE AURA ARENA</div><h1>Entra al combate</h1><p>Compite, gana Aura y descubre quién domina la arena.</p><button className="primary" onClick={()=>setAuthMode('login')}>🔐 {t.login}</button><button onClick={()=>setAuthMode('register')}>📝 {t.register}</button><div className="lang-line">🌎 <select value={lang} onChange={e=>setLang(e.target.value as Lang)}><option value="es">Español</option><option value="en">English</option><option value="pt">Português</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="it">Italiano</option><option value="tr">Türkçe</option><option value="ja">日本語</option><option value="ko">한국어</option><option value="zh">中文</option></select></div></div>:<div className={authMode==='login'?'auth-login-layout':'auth-form-wrap'}>{authMode==='login'&&<div className="auth-visual"><img src="/assets/aura-arena-home.png" alt="AURA BATTLE Arena"/><div className="auth-visual-overlay"><span>⚡ ONLINE AURA ARENA</span><strong>Prepárate para la batalla</strong></div></div>}<form className="auth-card" onSubmit={handleAuth}><div className="eyebrow">{authMode==='login'?'ACCESO':'NUEVO JUGADOR'}</div><h1>{authMode==='login'?t.login:t.register}</h1>{authMode==='register'&&<input placeholder="Nombre de jugador" value={name} onChange={e=>setName(e.target.value)} required/>}<input type="email" placeholder="Correo electrónico" value={email} onChange={e=>setEmail(e.target.value)} required/><input type="password" placeholder="Contraseña" value={password} onChange={e=>setPassword(e.target.value)} required/>{authMode==='register'&&<><input type="password" placeholder="Repite la contraseña" value={password2} onChange={e=>setPassword2(e.target.value)} required/><div className={password2?(password===password2?'match ok':'match bad'):'match'}>{password2?(password===password2?'✓ Las contraseñas coinciden':'✕ Las contraseñas no coinciden'):'Confirmación de contraseña'}</div></>}{authMsg&&<div className="error">{authMsg}</div>}<button className="primary" type="submit">{authMode==='login'?t.login:t.register}</button>{authMode==='login'&&<><div className="auth-divider"><span>o</span></div><button type="button" className="google-button" onClick={loginWithGoogle}>G&nbsp;&nbsp; Continuar con Google</button><button type="button" className="link-button" onClick={resetPassword}>¿Olvidaste tu contraseña?</button></>}{resetSent&&<div className="success">✓ Revisa tu correo para restablecerla.</div>}<button type="button" onClick={()=>{setAuthMode('choice');setAuthMsg('')}}>← Volver</button></form></div>}<div className="ad-slot auth-ad">Espacio publicitario · comunidad AURA BATTLE</div></div>}
+function AuthScreen(p:any){
+  const {authMode,setAuthMode,email,setEmail,password,setPassword,password2,setPassword2,name,setName,authMsg,setAuthMsg,handleAuth,resetPassword,resetSent,loginWithGoogle,lang,setLang,t}=p
+  return (
+    <div className="auth-shell">
+      <div className="auth-brand">
+        <div className="brand">⚡ <span>AURA BATTLE</span><b>V5.135</b></div>
+        <p>La arena donde tu Aura habla por ti.</p>
+      </div>
+
+      {authMode==='choice' ? (
+        <div className="auth-choice-layout">
+          <div className="auth-choice-visual">
+            <img src="/assets/aura-arena-home.png" alt="AURA BATTLE Arena"/>
+            <div className="auth-choice-overlay">
+              <span>⚡ ONLINE AURA ARENA</span>
+              <strong>Prepárate para la batalla</strong>
+            </div>
+          </div>
+          <div className="auth-card auth-choice-card">
+            <div className="eyebrow">ONLINE AURA ARENA</div>
+            <h1>Entra al combate</h1>
+            <p>Compite, gana Aura y descubre quién domina la arena.</p>
+            <button className="primary" onClick={()=>setAuthMode('login')}>🔐 {t.login}</button>
+            <button onClick={()=>setAuthMode('register')}>📝 {t.register}</button>
+            <div className="lang-line">
+              🌎
+              <select value={lang} onChange={e=>setLang(e.target.value as Lang)}>
+                <option value="es">Español</option><option value="en">English</option><option value="pt">Português</option>
+                <option value="fr">Français</option><option value="de">Deutsch</option><option value="it">Italiano</option>
+                <option value="tr">Türkçe</option><option value="ja">日本語</option><option value="ko">한국어</option><option value="zh">中文</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className={authMode==='login'?'auth-login-layout':'auth-form-wrap'}>
+          {authMode==='login' && (
+            <div className="auth-visual">
+              <img src="/assets/aura-arena-home.png" alt="AURA BATTLE Arena"/>
+              <div className="auth-visual-overlay">
+                <span>⚡ ONLINE AURA ARENA</span>
+                <strong>Prepárate para la batalla</strong>
+              </div>
+            </div>
+          )}
+
+          <form className="auth-card" onSubmit={handleAuth}>
+            <div className="eyebrow">{authMode==='login'?'ACCESO':'NUEVO JUGADOR'}</div>
+            <h1>{authMode==='login'?t.login:t.register}</h1>
+
+            {authMode==='register' && (
+              <input placeholder="Nombre de jugador" value={name} onChange={e=>setName(e.target.value)} required/>
+            )}
+
+            <input type="email" placeholder="Correo electrónico" value={email} onChange={e=>setEmail(e.target.value)} required/>
+            <input type="password" placeholder="Contraseña" value={password} onChange={e=>setPassword(e.target.value)} required/>
+
+            {authMode==='register' && (
+              <>
+                <input type="password" placeholder="Repite la contraseña" value={password2} onChange={e=>setPassword2(e.target.value)} required/>
+                <div className={password2?(password===password2?'match ok':'match bad'):'match'}>
+                  {password2 ? (password===password2 ? '✓ Las contraseñas coinciden' : '✕ Las contraseñas no coinciden') : 'Confirmación de contraseña'}
+                </div>
+              </>
+            )}
+
+            {authMsg && <div className="error">{authMsg}</div>}
+
+            <button className="primary" type="submit">{authMode==='login'?t.login:t.register}</button>
+
+            {authMode==='login' && (
+              <>
+                <div className="auth-divider"><span>o</span></div>
+                <button type="button" className="google-button" onClick={loginWithGoogle}>G&nbsp;&nbsp; Continuar con Google</button>
+                <button type="button" className="link-button" onClick={resetPassword}>¿Olvidaste tu contraseña?</button>
+              </>
+            )}
+
+            {resetSent && <div className="success">✓ Revisa tu correo para restablecerla.</div>}
+
+            <button type="button" onClick={()=>{setAuthMode('choice');setAuthMsg('')}}>← Volver</button>
+          </form>
+        </div>
+      )}
+
+      <div className="ad-slot auth-ad">Espacio publicitario · comunidad AURA BATTLE</div>
+    </div>
+  )
+}
+
 function icon(n:Tab){return ({home:'🏠',profile:'👤',friends:'👥',chat:'💬',battle:'⚔️',ai:'🤖',ranking:'🏆',league:'🥇',clans:'🛡️',premium:'💎',settings:'⚙️'} as Record<Tab,string>)[n]}
 function Panel({title,children}:{title:string;children:ReactNode}){return <section className="panel"><div className="panel-title">{title}</div>{children}</section>}
 function Card({icon,title,text,action}:{icon:string;title:string;text:string;action:()=>void}){return <button className="feature" onClick={action}><span>{icon}</span><div><h3>{title}</h3><p>{text}</p></div><b>→</b></button>}
