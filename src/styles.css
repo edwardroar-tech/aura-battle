@@ -463,3 +463,14 @@ button,input,select{border-radius:14px}
 }
 
 .auth-loading{min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;background:#070914;color:#fff;font-size:28px;font-weight:900;text-align:center;gap:8px}.auth-loading small{font-size:13px;color:#8f96ae;font-weight:500}
+
+/* v5.162 — base de Clanes */
+.clan-create{padding:16px;border:1px solid rgba(126,102,255,.22);border-radius:18px;background:rgba(126,102,255,.06);margin-bottom:18px}
+.clan-form-grid{display:grid;grid-template-columns:2fr 1fr .8fr 1fr;gap:10px}
+.clan-form-grid textarea{grid-column:1/-1;min-height:74px;resize:vertical}
+.clan-create-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px}
+.clan-create-foot small{color:#aab1c7;line-height:1.4}
+.clan-search{max-width:620px}
+.clan-card{position:relative;padding:18px;border:1px solid rgba(255,255,255,.1);border-radius:18px;background:rgba(255,255,255,.035);min-height:180px}
+.clan-card h3{margin:4px 0 6px 48px}.clan-card p{color:#aeb5ca;line-height:1.4;margin:6px 0}.clan-card small{color:#737c96}.clan-emblem{position:absolute;left:16px;top:16px;width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:rgba(126,102,255,.16);font-size:20px}.clan-tag{font-size:12px;font-weight:800;color:#8d9aff!important}
+@media(max-width:700px){.clan-form-grid{grid-template-columns:1fr 1fr}.clan-form-grid textarea{grid-column:1/-1}.clan-create-foot{align-items:flex-start;flex-direction:column}.clan-create-foot button{width:100%}}
