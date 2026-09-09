@@ -101,7 +101,7 @@ io.on('connection', (socket) => {
       const players = rooms.get(roomCode) || []
       const a = Number(io.sockets.sockets.get(players[0])?.data.auraScore) || 0
       const b = Number(io.sockets.sockets.get(players[1])?.data.auraScore) || 0
-      io.to(roomCode).emit('battle-ended', { aura1: a, aura2: b })
+      io.to(roomCode).emit('battle-ended', { aura1: a, aura2: b, winnerId: a === b ? null : (a > b ? players[0] : players[1]) })
     }, 15000)
     battleTimers.set(roomCode, timer)
   })
@@ -115,7 +115,7 @@ io.on('connection', (socket) => {
     const players = rooms.get(roomCode) || []
     const a = Number(io.sockets.sockets.get(players[0])?.data.auraScore) || 0
     const b = Number(io.sockets.sockets.get(players[1])?.data.auraScore) || 0
-    io.to(roomCode).emit('battle-ended', { aura1: a, aura2: b })
+    io.to(roomCode).emit('battle-ended', { aura1: a, aura2: b, winnerId: a === b ? null : (a > b ? players[0] : players[1]) })
   })
 
   socket.on('aura-score', (score) => {

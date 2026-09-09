@@ -35,8 +35,8 @@ export default function App(){
  const [chat,setChat]=useState<ChatMsg[]>([]); const [chatInput,setChatInput]=useState(''); const [chatLoading,setChatLoading]=useState(false); const [chatMsg,setChatMsg]=useState(''); const [privateFriend,setPrivateFriend]=useState<Friend|null>(null); const [privateChat,setPrivateChat]=useState<ChatMsg[]>([]); const [privateInput,setPrivateInput]=useState(''); const [privateLoading,setPrivateLoading]=useState(false); const [privateMsg,setPrivateMsg]=useState('')
  const [leaders,setLeaders]=useState<Friend[]>([]); const [clans,setClans]=useState<Clan[]>([]); const [clanName,setClanName]=useState(''); const [clanMsg,setClanMsg]=useState('')
  const [premium,setPremium]=useState(false); const [musicOn,setMusicOn]=useState(true); const [mobileMore,setMobileMore]=useState(false); const [resetSent,setResetSent]=useState(false); const [theme,setTheme]=useState<'neon'|'midnight'>('neon')
- const [room,setRoom]=useState(''); const [roomCode,setRoomCode]=useState(''); const [roomStatus,setRoomStatus]=useState('Listo.'); const [opponentJoined,setOpponentJoined]=useState(false); const [bothCamerasReady,setBothCamerasReady]=useState(false); const [host,setHost]=useState(false); const [cameraOn,setCameraOn]=useState(false); const [battleStarted,setBattleStarted]=useState(false); const [battleSeconds,setBattleSeconds]=useState(0); const [aura,setAura]=useState(0); const [opponentAura,setOpponentAura]=useState(0); const [online,setOnline]=useState(0)
- const hostRef=useRef(false); const cameraSourceRef=useRef<'ai'|'battle'|null>(null); const videoRef=useRef<HTMLVideoElement>(null); const aiVideoRef=useRef<HTMLVideoElement>(null); const battleMusicRef=useRef<HTMLAudioElement>(null); const remoteVideoRef=useRef<HTMLVideoElement>(null); const localStreamRef=useRef<MediaStream|null>(null); const peerRef=useRef<RTCPeerConnection|null>(null); const pendingIceRef=useRef<RTCIceCandidateInit[]>([]); const canvasRef=useRef<HTMLCanvasElement|null>(null)
+ const [room,setRoom]=useState(''); const [roomCode,setRoomCode]=useState(''); const [roomStatus,setRoomStatus]=useState('Listo.'); const [opponentJoined,setOpponentJoined]=useState(false); const [bothCamerasReady,setBothCamerasReady]=useState(false); const [host,setHost]=useState(false); const [cameraOn,setCameraOn]=useState(false); const [battleStarted,setBattleStarted]=useState(false); const [battleSeconds,setBattleSeconds]=useState(0); const [aura,setAura]=useState(0); const [opponentAura,setOpponentAura]=useState(0); const [online,setOnline]=useState(0); const [battleResult,setBattleResult]=useState<{outcome:'win'|'loss'|'draw';localScore:number;rivalScore:number;delta:number}|null>(null)
+ const hostRef=useRef(false); const battleResultHandledRef=useRef(false); const cameraSourceRef=useRef<'ai'|'battle'|null>(null); const videoRef=useRef<HTMLVideoElement>(null); const aiVideoRef=useRef<HTMLVideoElement>(null); const battleMusicRef=useRef<HTMLAudioElement>(null); const remoteVideoRef=useRef<HTMLVideoElement>(null); const localStreamRef=useRef<MediaStream|null>(null); const peerRef=useRef<RTCPeerConnection|null>(null); const pendingIceRef=useRef<RTCIceCandidateInit[]>([]); const canvasRef=useRef<HTMLCanvasElement|null>(null)
  const t=copy[lang]
 
  // Mantiene la navegación interna de la app sincronizada con el botón Atrás
@@ -54,6 +54,13 @@ export default function App(){
  useEffect(()=>{
    window.history.replaceState({auraTab:'home'},'',window.location.href)
    const onPopState=(event:PopStateEvent)=>{
+     if(battleResultHandledRef.current && !battleStarted){
+       setBattleResult(null)
+       battleResultHandledRef.current=false
+       setTab('home')
+       window.history.replaceState({auraTab:'home'},'',window.location.href)
+       return
+     }
      const next=event.state?.auraTab as Tab|undefined
      setTab(next||'home')
    }
@@ -118,37 +125,57 @@ export default function App(){
     }
   })
   socket.on('start',({endsAt}:{endsAt:number})=>{
+    battleResultHandledRef.current=false
+    setBattleResult(null)
     setBattleStarted(true)
     setRoomStatus('🔥 ¡BATALLA DE AURA EN CURSO!')
     setBattleSeconds(Math.max(0,Math.ceil((endsAt-Date.now())/1000)))
   })
-  socket.on('battle-ended',async({aura1,aura2}:{aura1:number;aura2:number})=>{
-    setAura(Math.round(aura1)); setOpponentAura(Math.round(aura2)); setBattleStarted(false); setBattleSeconds(0)
-    const localAura=hostRef.current?Math.round(aura1):Math.round(aura2)
-    const rivalAura=hostRef.current?Math.round(aura2):Math.round(aura1)
-    const win=localAura>rivalAura
-    const draw=localAura===rivalAura
+  socket.on('battle-ended',async({aura1,aura2,winnerId}:{aura1:number;aura2:number;winnerId?:string})=>{
+    if(battleResultHandledRef.current)return
+    battleResultHandledRef.current=true
+    const score1=Math.round(aura1||0)
+    const score2=Math.round(aura2||0)
+    const localScore=hostRef.current?score1:score2
+    const rivalScore=hostRef.current?score2:score1
+    const draw=localScore===rivalScore
+    const win=winnerId ? winnerId===socket.id : localScore>rivalScore
+    const outcome: 'win'|'loss'|'draw'=draw?'draw':(win?'win':'loss')
+    const delta=outcome==='win'?25:(outcome==='draw'?10:5)
+
+    // Detener cámaras y conexión de vídeo inmediatamente al finalizar.
+    if(localStreamRef.current){localStreamRef.current.getTracks().forEach(t=>t.stop());localStreamRef.current=null}
+    if(videoRef.current) videoRef.current.srcObject=null
+    if(remoteVideoRef.current) remoteVideoRef.current.srcObject=null
+    peerRef.current?.close();peerRef.current=null
+    setCameraOn(false)
+    setBothCamerasReady(false)
+    setBattleStarted(false)
+    setBattleSeconds(0)
+    setAura(localScore)
+    setOpponentAura(rivalScore)
+    setRoomStatus(outcome==='draw'?'🤝 Batalla empatada':outcome==='win'?'🏆 Batalla ganada':'💥 Batalla perdida')
+
     const currentUser=auth.currentUser
     if(currentUser){
       try{
-        const snap=await getDoc(doc(db,'users',currentUser.uid))
+        const ref=doc(db,'users',currentUser.uid)
+        const snap=await getDoc(ref)
         const current=snap.exists()?snap.data():{}
         const currentAura=Number(current.aura||0)
         const currentWins=Number(current.victorias||0)
         const currentLosses=Number(current.derrotas||0)
-        const delta=win?25:(draw?10:-5)
         const nextAura=Math.max(0,currentAura+delta)
-        const nextWins=currentWins+(win?1:0)
-        const nextLosses=currentLosses+(win||draw?0:1)
+        const nextWins=currentWins+(outcome==='win'?1:0)
+        const nextLosses=currentLosses+(outcome==='loss'?1:0)
         const nextLevel=Math.min(100,Math.max(1,Math.floor(nextAura/100)+1))
-        await updateDoc(doc(db,'users',currentUser.uid),{aura:nextAura,victorias:nextWins,derrotas:nextLosses,level:nextLevel})
+        await setDoc(ref,{aura:nextAura,victorias:nextWins,derrotas:nextLosses,level:nextLevel},{merge:true})
         setProfile({aura:nextAura,wins:nextWins,losses:nextLosses,level:nextLevel})
       }catch(e){console.error('Battle result save error:',e);setRoomStatus('⚠️ La batalla terminó, pero no pudimos guardar el resultado.')}
     }
-    if(localStreamRef.current){localStreamRef.current.getTracks().forEach(t=>t.stop());localStreamRef.current=null}
-    peerRef.current?.close();peerRef.current=null
-    setCameraOn(false)
-    setRoomStatus(draw?'🤝 ¡Empate! +10 Aura':(win?'🏆 ¡Victoria! +25 Aura':'⚡ Derrota. -5 Aura'))
+
+    setBattleResult({outcome,localScore,rivalScore,delta})
+    window.history.pushState({auraTab:'battle-result'},'',window.location.href)
   })
   socket.on('opponent-aura',(v:number)=>setOpponentAura(Math.round(v)))
   socket.on('peer-left',()=>{setOpponentJoined(false);setBothCamerasReady(false);setBattleStarted(false);setRoomStatus('El rival salió de la sala.')})
@@ -214,6 +241,17 @@ useEffect(()=>{if(!cameraOn||!videoRef.current)return; const v=videoRef.current;
  async function handleAuth(e:FormEvent){e.preventDefault();setAuthMsg('');try{if(authMode==='register'){if(name.trim().length<2)return setAuthMsg('Escribe un nombre de jugador.');if(password!==password2)return setAuthMsg('Las contraseñas no coinciden.');if(password.length<6)return setAuthMsg('La contraseña debe tener al menos 6 caracteres.');const c=await createUserWithEmailAndPassword(auth,email,password);const clean=name.trim();await updateProfile(c.user,{displayName:clean});await setDoc(doc(db,'users',c.user.uid),{uid:c.user.uid,nombre:clean,nombreLower:clean.toLowerCase(),email,aura:0,victorias:0,derrotas:0,level:1,createdAt:serverTimestamp()},{merge:true})}else await signInWithEmailAndPassword(auth,email,password)}catch(e:any){setAuthMsg(e?.message?.replace('Firebase: Error (auth/','').replace(').','')||'No se pudo completar la operación.')}}
  async function resetPassword(){if(!email.trim()){setAuthMsg('Escribe tu correo para recuperar la contraseña.');return}try{await sendPasswordResetEmail(auth,email.trim());setResetSent(true);setAuthMsg('Te enviamos un enlace para restablecer tu contraseña.')}catch(e:any){setAuthMsg('No pudimos enviar el enlace de recuperación. Revisa el correo.')}}
  async function loginWithGoogle(){setAuthMsg('');try{const provider=new GoogleAuthProvider();provider.setCustomParameters({prompt:'select_account'});await signInWithRedirect(auth,provider)}catch(e:any){console.error('Google sign-in error:',e);setAuthMsg(e?.message?.replace('Firebase: Error (auth/','').replace(').','')||'No se pudo iniciar sesión con Google.')}}
+ function returnToHome(){
+   if(localStreamRef.current){localStreamRef.current.getTracks().forEach(t=>t.stop());localStreamRef.current=null}
+   if(videoRef.current) videoRef.current.srcObject=null
+   if(remoteVideoRef.current) remoteVideoRef.current.srcObject=null
+   peerRef.current?.close();peerRef.current=null
+   setCameraOn(false);setBothCamerasReady(false);setBattleStarted(false);setBattleSeconds(0);setBattleResult(null)
+   battleResultHandledRef.current=false
+   setRoomCode('');setRoom('');setOpponentJoined(false);setOpponentAura(0);setAura(0);setRoomStatus('Listo.')
+   window.history.replaceState({auraTab:'home'},'',window.location.href)
+   setTab('home')
+ }
  async function finishBattle(){if(!user||!battleStarted)return;socket.emit('finish-battle');setRoomStatus('⏳ Finalizando la batalla…')}
  async function logout(){localStreamRef.current?.getTracks().forEach(x=>x.stop());peerRef.current?.close();await signOut(auth);socket.disconnect();navigateTab('home')}
  async function resetPeer(){pendingIceRef.current=[]; if(peerRef.current){peerRef.current.ontrack=null;peerRef.current.onicecandidate=null;peerRef.current.close();peerRef.current=null} setBothCamerasReady(false);setBattleStarted(false);setBattleSeconds(0);setOpponentAura(0)}
@@ -375,14 +413,21 @@ useEffect(()=>{if(!cameraOn||!videoRef.current)return; const v=videoRef.current;
  async function joinClan(c:Clan){if(!user)return;await updateDoc(doc(db,'clans',c.id),{members:arrayUnion(user.uid)});alert('Te uniste al clan.')}
 
  if(!user)return <AuthScreen {...{authMode,setAuthMode,email,setEmail,password,setPassword,password2,setPassword2,name,setName,authMsg,setAuthMsg,handleAuth,resetPassword,resetSent,loginWithGoogle,lang,setLang,t}}/>
- return <div className={`app ${theme}`}><audio ref={battleMusicRef} src="/assets/audio/aura-battle-theme.wav" loop preload="auto" /><header className="topbar"><div className="brand">⚡ <span>AURA BATTLE</span><b>V5.139</b></div><div className="top-actions"><span className="online-pill">● {online} {t.online}</span><select value={lang} onChange={e=>setLang(e.target.value as Lang)}><option value="es">ES</option><option value="en">EN</option><option value="pt">PT</option><option value="fr">FR</option><option value="de">DE</option><option value="it">IT</option><option value="tr">TR</option><option value="ja">JA</option><option value="ko">KO</option><option value="zh">中文</option></select><button onClick={logout}>{t.logout}</button></div></header>
+ return <div className={`app ${theme}`}><audio ref={battleMusicRef} src="/assets/audio/aura-battle-theme.wav" loop preload="auto" /><header className="topbar"><div className="brand">⚡ <span>AURA BATTLE</span><b>V5.142</b></div><div className="top-actions"><span className="online-pill">● {online} {t.online}</span><select value={lang} onChange={e=>setLang(e.target.value as Lang)}><option value="es">ES</option><option value="en">EN</option><option value="pt">PT</option><option value="fr">FR</option><option value="de">DE</option><option value="it">IT</option><option value="tr">TR</option><option value="ja">JA</option><option value="ko">KO</option><option value="zh">中文</option></select><button onClick={logout}>{t.logout}</button></div></header>
  <div className="layout"><aside className="sidebar"><div className="mini-profile"><div className="profile-icon">⚡</div><div><strong>{user.displayName||'Jugador'}</strong><small>⚡ {profile.aura} Aura · Lv.{profile.level}</small></div></div>{nav.map(n=><button key={n} className={tab===n?'nav active':'nav'} onClick={()=>navigateTab(n)}>{icon(n)} {t[n]}</button>)}<div className="ad-slot side-ad">PUBLICIDAD<br/><small>Espacio para marcas</small></div></aside>
  <main className="content">
  {tab==='home'&&<section className="home-hero"><div className="hero-copy"><div className="eyebrow">⚡ ONLINE AURA ARENA</div><h1>{t.welcome}</h1><p>Compite en vivo, gana Aura y construye tu reputación.</p><div className="hero-actions"><button className="primary" onClick={()=>navigateTab('battle')}>⚔️ {t.play}</button><button onClick={()=>navigateTab('profile')}>👤 Mi perfil</button></div><div className="quick-stats"><Stat label="⚡ Tu Aura" value={profile.aura}/><Stat label="🏆 Victorias" value={profile.wins}/><Stat label="🔥 Nivel" value={profile.level}/></div></div><div className="hero-art"><img src="/assets/aura-arena-home.png" alt="AURA BATTLE Arena"/><div className="hero-glow">LIVE</div></div><div className="home-grid"><Card icon="⚔️" title="Batallas 1v1" text="Crea una sala y reta a otra persona con cámara." action={()=>navigateTab('battle')}/><Card icon="🤖" title="IA Aura" text="Convierte señales visuales de tu cámara en una métrica de Aura." action={()=>navigateTab('ai')}/><Card icon="🏆" title="Ranking global" text="Sube posiciones con tus victorias y puntuación." action={()=>navigateTab('ranking')}/><Card icon="🛡️" title="Clanes" text="Forma equipos y crea una comunidad alrededor de tu Aura." action={()=>navigateTab('clans')}/></div><div className="ad-slot banner-ad">ESPACIO PUBLICITARIO · AURA BATTLE</div></section>}
  {tab==='profile'&&<Panel title="👤 Mi perfil"><div className="profile-head"><div className="big-profile-icon">⚡</div><div><h2>{user.displayName||'Jugador'}</h2><p>{user.email}</p><span className="badge">Nivel {profile.level}</span></div></div><div className="stats"><Stat label="Aura" value={profile.aura}/><Stat label="Victorias" value={profile.wins}/><Stat label="Derrotas" value={profile.losses}/><Stat label="Ratio" value={`${profile.wins+profile.losses?Math.round(profile.wins/(profile.wins+profile.losses)*100):0}%`}/></div><div className="profile-actions"><button className="primary" onClick={()=>navigateTab('battle')}>⚔️ Ir a batallar</button><button onClick={()=>navigateTab('settings')}>⚙️ Ajustes</button></div></Panel>}
  {tab==='friends'&&<Panel title="👥 Amigos"><p>Encuentra jugadores y añade rivales a tu red.</p><div className="inline"><input placeholder="Nombre del jugador" value={friendSearch} onChange={e=>setFriendSearch(e.target.value)} onKeyDown={e=>e.key==='Enter'&&searchFriends()}/><button type="button" onClick={searchFriends} disabled={friendSearching}>{friendSearching?'⏳ Buscando…':'🔎 Buscar'}</button></div>{friendMsg&&<div className="notice">{friendMsg}</div>}{friendResults.length>0&&<div className="list">{friendResults.map(f=><div className="list-row" key={f.id}>🧑 <span>{f.name}<small>⚡ {f.aura}</small></span><button onClick={()=>addFriend(f)}>＋ Añadir</button></div>)}</div>}<div className="section-title">Mis amigos</div><div className="list">{friends.length?friends.map(f=><div className="list-row" key={f.id}>🟢 <span>{f.name}<small>⚡ {f.aura}</small></span><button className="primary" onClick={()=>openPrivateChat(f)}>💬 Chat</button></div>):<div className="empty">Todavía no tienes amigos. Busca un jugador arriba.</div>}</div></Panel>}
  {tab==='chat'&&<Panel title={privateFriend?`💬 Chat con ${privateFriend.name}`:'💬 Chat global'}>{privateFriend?<><button type="button" onClick={()=>{setPrivateFriend(null);setPrivateChat([])}}>← Chat global</button><div className="private-chat-head">🟢 {privateFriend.name}<small>⚡ {privateFriend.aura} Aura</small></div><div className="chat-box private-chat-box">{privateChat.length?privateChat.map(m=><div className={m.uid===user.uid?'bubble mine':'bubble'} key={m.id}><strong>{m.name}</strong><span>{m.text}</span></div>):<div className="empty">{privateLoading?'Cargando conversación…':'Todavía no hay mensajes. ¡Saluda a tu amigo!'}</div>}</div><form className="inline" onSubmit={sendPrivateChat}><input maxLength={300} value={privateInput} onChange={e=>setPrivateInput(e.target.value)} placeholder={`Escribe a ${privateFriend.name}…`}/><button className="primary" type="submit" disabled={!privateInput.trim()||privateLoading}>Enviar</button></form>{privateMsg&&<div className="notice">{privateMsg}</div>}<small className="small">Chat privado entre amigos. Solo ustedes dos pueden verlo.</small></>:<><div className="chat-box">{chat.length?chat.map(m=><div className={m.uid===user.uid?'bubble mine':'bubble'} key={m.id}><strong>{m.name}</strong><span>{m.text}</span></div>):<div className="empty">Sé la primera persona en escribir.</div>}</div><form className="inline" onSubmit={sendChat}><input maxLength={300} value={chatInput} onChange={e=>setChatInput(e.target.value)} placeholder="Escribe un mensaje…"/><button className="primary" type="submit" disabled={!chatInput.trim()||chatLoading}>Enviar</button></form>{chatMsg&&<div className="notice">{chatMsg}</div>}<small className="small">Chat público de la comunidad. No compartas datos personales.</small></>}</Panel>}
- {tab==='battle'&&<Panel title="⚔️ Batallas 1v1"><div className="battle-intro"><div><h2>Entra a la arena</h2><p>Crea una sala y comparte el código con tu rival, o únete a una sala existente.</p></div><div className="live-dot">● LIVE</div></div><div className="room-card">{!roomCode?<div className="room-actions"><button className="primary" onClick={createRoom}>{t.create}</button><span>o</span><input maxLength={6} placeholder={t.code} value={room} onChange={e=>setRoom(e.target.value.toUpperCase())}/><button onClick={joinRoom}>{t.join}</button></div>:<><div className="room-code">{roomCode}</div><button className="copy-btn" onClick={()=>navigator.clipboard?.writeText(roomCode)}>📋 Copiar código</button><div className="status">{roomStatus}</div><div className="battle-actions"><button onClick={startCamera}>📷 {cameraOn?'CÁMARA ACTIVA':'ACTIVAR CÁMARA'}</button><button className="primary" disabled={!opponentJoined||!cameraOn||!bothCamerasReady} onClick={startBattle}>🔥 {battleStarted?'BATALLA EN CURSO':'INICIAR BATALLA'}</button>{battleStarted&&<button onClick={finishBattle}>🏁 Terminar y guardar resultado</button>}</div></>}</div><div className="video-grid"><VideoCard title={user.displayName||'Jugador 1'} videoRef={videoRef} score={aura} muted/><VideoCard title="Rival" videoRef={remoteVideoRef} score={opponentAura}/></div>{battleStarted&&<div className="battle-banner">🔥 BATALLA ACTIVA · ⏱️ {battleSeconds}s · ¡Sube tu Aura! <button className="music-toggle" onClick={()=>setMusicOn(v=>!v)}>{musicOn?'🔊 Música':'🔇 Música'}</button></div>}</Panel>}
+ {tab==='battle'&&<Panel title="⚔️ Batallas 1v1">{battleResult?<div className={`battle-result-card ${battleResult.outcome}`}>
+   <div className="battle-result-icon">{battleResult.outcome==='win'?'🏆':battleResult.outcome==='loss'?'💥':'🤝'}</div>
+   <div className="battle-result-label">RESULTADO FINAL</div>
+   <h2>{battleResult.outcome==='win'?'¡GANASTE!':battleResult.outcome==='loss'?'¡PERDISTE!':'¡EMPATE!'}</h2>
+   <p className="battle-result-sub">{battleResult.outcome==='draw'?'Ambos jugadores obtienen +10 Aura.':battleResult.outcome==='win'?'+25 Aura para ti.':'+5 Aura para ti.'}</p>
+   <div className="battle-scoreboard"><div><span>TÚ</span><strong>⚡ {battleResult.localScore}</strong><small>{battleResult.outcome==='win'?'GANADOR':battleResult.outcome==='draw'?'EMPATE':'DERROTA'}</small></div><div className="score-vs">VS</div><div><span>RIVAL</span><strong>⚡ {battleResult.rivalScore}</strong><small>{battleResult.outcome==='loss'?'GANADOR':battleResult.outcome==='draw'?'EMPATE':'DERROTA'}</small></div></div>
+   <button className="primary result-home-btn" onClick={returnToHome}>← Volver al inicio</button>
+ </div>:<><div className="battle-intro"><div><h2>Entra a la arena</h2><p>Crea una sala y comparte el código con tu rival, o únete a una sala existente.</p></div><div className="live-dot">● LIVE</div></div><div className="room-card">{!roomCode?<div className="room-actions"><button className="primary" onClick={createRoom}>{t.create}</button><span>o</span><input maxLength={6} placeholder={t.code} value={room} onChange={e=>setRoom(e.target.value.toUpperCase())}/><button onClick={joinRoom}>{t.join}</button></div>:<><div className="room-code">{roomCode}</div><button className="copy-btn" onClick={()=>navigator.clipboard?.writeText(roomCode)}>📋 Copiar código</button><div className="status">{roomStatus}</div><div className="battle-actions"><button onClick={startCamera}>📷 {cameraOn?'CÁMARA ACTIVA':'ACTIVAR CÁMARA'}</button><button className="primary" disabled={!opponentJoined||!cameraOn||!bothCamerasReady} onClick={startBattle}>🔥 {battleStarted?'BATALLA EN CURSO':'INICIAR BATALLA'}</button>{battleStarted&&<button onClick={finishBattle}>🏁 Terminar y guardar resultado</button>}</div></>}</div><div className="video-grid"><VideoCard title={user.displayName||'Jugador 1'} videoRef={videoRef} score={aura} muted/><VideoCard title="Rival" videoRef={remoteVideoRef} score={opponentAura}/></div>{battleStarted&&<div className="battle-banner">🔥 BATALLA ACTIVA · ⏱️ {battleSeconds}s · ¡Sube tu Aura! <button className="music-toggle" onClick={()=>setMusicOn(v=>!v)}>{musicOn?'🔊 Música':'🔇 Música'}</button></div>}</>}</Panel>}
  {tab==='ai'&&<Panel title="🤖 IA Aura"><div className="training-notice"><strong>🎯 ÁREA DE ENTRENAMIENTO</strong><span>Usa esta sección para practicar y aprender a controlar tu Aura antes de entrar a batallas de farmeo de Aura.</span><small>⚠️ El Aura mostrado aquí es de entrenamiento y no suma Aura a tu perfil.</small></div><div className="ai-camera-card"><div className="ai-camera-frame"><video ref={aiVideoRef} autoPlay playsInline muted/>{!cameraOn&&<div className="ai-camera-placeholder">📷<span>Activa tu cámara para entrenar y ver tu Aura aquí</span></div>}<div className="ai-camera-badge">{cameraOn?'● CÁMARA ACTIVA':'● CÁMARA INACTIVA'}</div>{cameraOn&&<div className="ai-aura-overlay"><span>⚡ AURA</span><b>{aura}</b></div>}</div><div className="ai-aura-label">⚡ Aura detectada: <strong>{aura}</strong></div><div className="ai-meter"><div className="meter-fill" style={{width:`${aura}%`}}/></div></div><div className="ai-hero"><div><h2>Tu Aura de entrenamiento</h2><div className="aura-number">{aura}</div><p>La lectura es una métrica visual local de demostración para practicar antes de entrar a una batalla.</p></div><div className="ai-orb">⚡</div></div><button className="primary" onClick={startCamera}>{cameraOn?'✓ Cámara conectada':'📷 Activar cámara'}</button><div className="notice">Consejo: buena iluminación, rostro visible y encuadre estable ayudan a obtener una señal visual más consistente.</div></Panel>}
  {tab==='ranking'&&<Panel title="🏆 Ranking global"><div className="podium"><div>🥈 {leaders[1]?.name||'—'}<b>{leaders[1]?.aura||0}</b></div><div>🥇 {leaders[0]?.name||'—'}<b>{leaders[0]?.aura||0}</b></div><div>🥉 {leaders[2]?.name||'—'}<b>{leaders[2]?.aura||0}</b></div></div><div className="leader-list">{leaders.map((x,i)=><div className="leader" key={x.id}><span>#{i+1} · {x.name}</span><b>⚡ {x.aura}</b></div>)}</div></Panel>}
  {tab==='league'&&<Panel title="🥇 Liga"><div className="league-card"><div className="league-badge">⚡</div><h2>Bronce</h2><p>Gana batallas para subir a Plata, Oro y las divisiones superiores.</p><div className="progress"><span style={{width:`${Math.min(100,(profile.wins*10)%101)}%`}}/></div><small>{profile.wins*10} / 100 puntos de ascenso</small></div><div className="three-col"><Stat label="Temporada" value="01"/><Stat label="Victorias" value={profile.wins}/><Stat label="Nivel" value={profile.level}/></div></Panel>}
@@ -402,7 +447,7 @@ function AuthScreen(p:any){
   return (
     <div className="auth-shell">
       <div className="auth-brand">
-        <div className="brand">⚡ <span>AURA BATTLE</span><b>V5.139</b></div>
+        <div className="brand">⚡ <span>AURA BATTLE</span><b>V5.142</b></div>
         <p>La arena donde tu Aura habla por ti.</p>
       </div>
 
