@@ -390,7 +390,7 @@ button,input,select{border-radius:14px}
 .request-actions{margin-left:auto;gap:6px}
 .request-actions button{white-space:nowrap}
 
-/* v5.149 — acciones de amistad */
+/* v5.150 — acciones de amistad */
 .friend-actions{justify-content:flex-end;gap:8px;flex-wrap:nowrap}
 .danger-btn{border:1px solid rgba(255,80,120,.45)!important;color:#ff7b9c!important;background:rgba(255,40,90,.08)!important;min-width:42px;padding:10px 12px!important}
 .danger-btn:hover{background:rgba(255,40,90,.18)!important}
