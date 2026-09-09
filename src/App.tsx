@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode, RefObject } from 'react'
+import { FilesetResolver, PoseLandmarker } from '@mediapipe/tasks-vision'
 import { auth, db } from './lib/firebase'
 import { socket } from './lib/socket'
 import { createUserWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut, updateProfile } from 'firebase/auth'
@@ -36,8 +37,8 @@ export default function App(){
  const [chat,setChat]=useState<ChatMsg[]>([]); const [chatInput,setChatInput]=useState(''); const [chatLoading,setChatLoading]=useState(false); const [chatMsg,setChatMsg]=useState(''); const [privateFriend,setPrivateFriend]=useState<Friend|null>(null); const [privateChat,setPrivateChat]=useState<ChatMsg[]>([]); const [privateInput,setPrivateInput]=useState(''); const [privateLoading,setPrivateLoading]=useState(false); const [privateMsg,setPrivateMsg]=useState('')
  const [leaders,setLeaders]=useState<Friend[]>([]); const [clans,setClans]=useState<Clan[]>([]); const [clanName,setClanName]=useState(''); const [clanMsg,setClanMsg]=useState('')
  const [premium,setPremium]=useState(false); const [musicOn,setMusicOn]=useState(true); const [mobileMore,setMobileMore]=useState(false); const [resetSent,setResetSent]=useState(false); const [theme,setTheme]=useState<'neon'|'midnight'>('neon')
- const [room,setRoom]=useState(''); const [roomCode,setRoomCode]=useState(''); const [roomStatus,setRoomStatus]=useState('Listo.'); const [opponentJoined,setOpponentJoined]=useState(false); const [bothCamerasReady,setBothCamerasReady]=useState(false); const [host,setHost]=useState(false); const [cameraOn,setCameraOn]=useState(false); const [battleStarted,setBattleStarted]=useState(false); const [battleSeconds,setBattleSeconds]=useState(0); const [aura,setAura]=useState(0); const [opponentAura,setOpponentAura]=useState(0); const [online,setOnline]=useState(0); const [battleResult,setBattleResult]=useState<{outcome:'win'|'loss'|'draw';localScore:number;rivalScore:number;delta:number}|null>(null)
- const hostRef=useRef(false); const battleResultHandledRef=useRef(false); const cameraSourceRef=useRef<'ai'|'battle'|null>(null); const videoRef=useRef<HTMLVideoElement>(null); const aiVideoRef=useRef<HTMLVideoElement>(null); const battleMusicRef=useRef<HTMLAudioElement>(null); const remoteVideoRef=useRef<HTMLVideoElement>(null); const localStreamRef=useRef<MediaStream|null>(null); const peerRef=useRef<RTCPeerConnection|null>(null); const pendingIceRef=useRef<RTCIceCandidateInit[]>([]); const canvasRef=useRef<HTMLCanvasElement|null>(null)
+ const [poseReady,setPoseReady]=useState(false); const [battleReady,setBattleReady]=useState(false); const [opponentReady,setOpponentReady]=useState(false); const [detectedMove,setDetectedMove]=useState('Esperando movimiento…'); const [moveBonus,setMoveBonus]=useState(0); const [room,setRoom]=useState(''); const [roomCode,setRoomCode]=useState(''); const [roomStatus,setRoomStatus]=useState('Listo.'); const [opponentJoined,setOpponentJoined]=useState(false); const [bothCamerasReady,setBothCamerasReady]=useState(false); const [host,setHost]=useState(false); const [cameraOn,setCameraOn]=useState(false); const [battleStarted,setBattleStarted]=useState(false); const [battleSeconds,setBattleSeconds]=useState(0); const [aura,setAura]=useState(0); const [opponentAura,setOpponentAura]=useState(0); const [online,setOnline]=useState(0); const [battleResult,setBattleResult]=useState<{outcome:'win'|'loss'|'draw';localScore:number;rivalScore:number;delta:number}|null>(null)
+ const hostRef=useRef(false); const battleResultHandledRef=useRef(false); const poseHistoryRef=useRef<{x:number;y:number;z:number;visibility:number}[][]>([]); const patternScoreRef=useRef(0); const lastMoveBonusRef=useRef(0); const lastMoveAtRef=useRef(0); const cameraSourceRef=useRef<'ai'|'battle'|null>(null); const videoRef=useRef<HTMLVideoElement>(null); const aiVideoRef=useRef<HTMLVideoElement>(null); const battleMusicRef=useRef<HTMLAudioElement>(null); const remoteVideoRef=useRef<HTMLVideoElement>(null); const localStreamRef=useRef<MediaStream|null>(null); const peerRef=useRef<RTCPeerConnection|null>(null); const pendingIceRef=useRef<RTCIceCandidateInit[]>([]); const canvasRef=useRef<HTMLCanvasElement|null>(null); const poseLandmarkerRef=useRef<PoseLandmarker|null>(null); const poseLoadingRef=useRef(false); const previousPoseRef=useRef<{x:number;y:number;z:number;visibility:number}[]|null>(null); const movementScoreRef=useRef(0); const poseFrameCountRef=useRef(0); const poseVisibleFrameCountRef=useRef(0); const lastPoseTimeRef=useRef(0)
  const t=copy[lang]
 
  // Mantiene la navegación interna de la app sincronizada con el botón Atrás
@@ -119,16 +120,35 @@ export default function App(){
   })
 },[user])
 
+ useEffect(()=>{
+  if(!user)return
+  const q=query(collection(db,'friendships'),where('participants','array-contains',user.uid))
+  return onSnapshot(q,async s=>{
+    const ids=s.docs.map(d=>{const x=d.data(); return (x.participants||[]).find((id:string)=>id!==user.uid) as string}).filter(Boolean)
+    if(!ids.length)return
+    const profiles=await Promise.all(ids.map(async(id:string)=>{
+      try{const fs=await getDoc(doc(db,'users',id));if(!fs.exists())return null;const x=fs.data();return{id,name:String(x.nombre||x.name||x.displayName||'Jugador'),aura:Number(x.aura||0)} as Friend}catch{return null}}))
+    setFriends(prev=>{const map=new Map<string,Friend>();prev.forEach(f=>map.set(f.id,f));profiles.filter(Boolean).forEach(f=>map.set((f as Friend).id,f as Friend));return [...map.values()]})
+  },e=>console.error('Friendships load error:',e))
+ },[user])
+
 useEffect(()=>{ if(!user)return; setChatLoading(true); setChatMsg(''); const q=query(collection(db,'chat'),orderBy('createdAt','desc'),limit(60)); return onSnapshot(q,s=>{setChat(s.docs.map(d=>({id:d.id,...d.data()} as ChatMsg)).reverse());setChatLoading(false)},e=>{console.error('Global chat load error:',e);setChatLoading(false);setChatMsg('⚠️ No se pudo cargar el chat global.')}) },[user])
  useEffect(()=>{ if(!user)return; const q=query(collection(db,'users'),orderBy('aura','desc'),limit(25)); return onSnapshot(q,s=>setLeaders(s.docs.map(d=>{const x=d.data(); return {id:d.id,name:x.nombre||'Jugador',aura:Number(x.aura||0)}}))) },[user])
  useEffect(()=>{ if(!user)return; const q=query(collection(db,'clans'),orderBy('createdAt','desc'),limit(20)); return onSnapshot(q,s=>setClans(s.docs.map(d=>({id:d.id,...d.data()} as Clan)))) },[user])
  useEffect(()=>{socket.on('online-count',(n:number)=>setOnline(n)); return()=>{socket.off('online-count')}},[])
  useEffect(()=>{
-  socket.on('peer-joined',()=>{setOpponentJoined(true);setRoomStatus('Rival conectado. Activen ambas cámaras para comenzar.')})
-  socket.on('peer-camera-ready',()=>setRoomStatus('El rival tiene la cámara lista. Activa la tuya para comenzar.'))
+  socket.on('peer-joined',()=>{setOpponentJoined(true);setOpponentReady(false);setBattleReady(false);setRoomStatus('Rival conectado. Activen ambas cámaras para comenzar.')})
+  socket.on('peer-camera-ready',()=>setRoomStatus(battleReady?'⏳ Estás listo. Esperando al rival…':'El rival tiene la cámara lista. Activa la tuya para comenzar.'))
+  socket.on('battle-ready-status',({readyCount,total,ready}:{readyCount:number;total:number;ready:{id:string;ready:boolean}[]})=>{
+    const other=ready.find(x=>x.id!==socket.id)
+    setOpponentReady(!!other?.ready)
+    if(readyCount<total) setRoomStatus(battleReady?'⏳ Estás listo. Esperando al rival…':'🎥 Ambas cámaras están listas. Pulsa LISTO cuando estés preparado.')
+  })
   socket.on('both-cameras-ready',async()=>{
     setBothCamerasReady(true)
-    setRoomStatus('🎥 Ambas cámaras están listas. Conectando las cámaras…')
+    setBattleReady(false)
+    setOpponentReady(false)
+    setRoomStatus('🎥 Ambas cámaras están listas. Pulsa LISTO cuando estés preparado.')
     if(hostRef.current){
       const pc=peerRef.current||await preparePeer()
       if(pc.signalingState==='stable' && pc.connectionState!=='connected'){
@@ -141,6 +161,8 @@ useEffect(()=>{ if(!user)return; setChatLoading(true); setChatMsg(''); const q=q
   socket.on('start',({endsAt}:{endsAt:number})=>{
     battleResultHandledRef.current=false
     setBattleResult(null)
+    setBattleReady(false)
+    setOpponentReady(false)
     setBattleStarted(true)
     setRoomStatus('🔥 ¡BATALLA DE AURA EN CURSO!')
     setBattleSeconds(Math.max(0,Math.ceil((endsAt-Date.now())/1000)))
@@ -176,6 +198,8 @@ useEffect(()=>{ if(!user)return; setChatLoading(true); setChatMsg(''); const q=q
     stopBattleMedia()
     setBattleStarted(false)
     setBattleSeconds(0)
+    movementScoreRef.current=0
+    previousPoseRef.current=null
     setAura(localScore)
     setOpponentAura(rivalScore)
     setRoomStatus(outcome==='draw'?'🤝 Batalla empatada':outcome==='win'?'🏆 Batalla ganada':'💥 Batalla perdida')
@@ -205,7 +229,7 @@ useEffect(()=>{ if(!user)return; setChatLoading(true); setChatMsg(''); const q=q
 
   })
   socket.on('opponent-aura',(v:number)=>setOpponentAura(Math.round(v)))
-  socket.on('peer-left',()=>{setOpponentJoined(false);setBothCamerasReady(false);setBattleStarted(false);setRoomStatus('El rival salió de la sala.')})
+  socket.on('peer-left',()=>{setOpponentJoined(false);setBothCamerasReady(false);setBattleReady(false);setOpponentReady(false);setBattleStarted(false);setRoomStatus('El rival salió de la sala.')})
   socket.on('signal',async(m:any)=>{
     try{
       const pc=peerRef.current||await preparePeer()
@@ -227,7 +251,7 @@ useEffect(()=>{ if(!user)return; setChatLoading(true); setChatMsg(''); const q=q
       }
     }catch(e){console.warn('WebRTC signal error',e)}
   })
-  return()=>{['peer-joined','peer-camera-ready','both-cameras-ready','start','battle-ended','opponent-aura','peer-left','signal'].forEach(x=>socket.off(x))}
+  return()=>{['peer-joined','peer-camera-ready','battle-ready-status','both-cameras-ready','start','battle-ended','opponent-aura','peer-left','signal'].forEach(x=>socket.off(x))}
  },[])
  useEffect(()=>{
   const audio=battleMusicRef.current;
@@ -263,7 +287,121 @@ useEffect(()=>{
   return()=>clearInterval(timer)
 },[battleStarted])
 
-useEffect(()=>{if(!cameraOn||!videoRef.current)return; const v=videoRef.current; const c=canvasRef.current||document.createElement('canvas');canvasRef.current=c;const ctx=c.getContext('2d',{willReadFrequently:true});if(!ctx)return;const timer=window.setInterval(()=>{if(v.readyState<2)return;c.width=64;c.height=48;ctx.drawImage(v,0,0,64,48);const p=ctx.getImageData(0,0,64,48).data;let total=0,bright=0;for(let i=0;i<p.length;i+=4){const x=(p[i]+p[i+1]+p[i+2])/3;total+=x;if(x>155)bright++}const s=Math.min(100,Math.max(0,Math.round(total/(p.length/4)*.42+bright/(p.length/4)*45)));setAura(s);if(battleStarted)socket.emit('aura-score',s)},700);return()=>clearInterval(timer)},[cameraOn,battleStarted])
+useEffect(()=>{
+  let cancelled=false
+  async function loadPose(){
+    if(poseLandmarkerRef.current||poseLoadingRef.current)return
+    poseLoadingRef.current=true
+    setPoseReady(false)
+    try{
+      const vision=await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm')
+      const landmarker=await PoseLandmarker.createFromModelPath(vision,'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task')
+      await landmarker.setOptions({runningMode:'VIDEO',numPoses:1,minPoseDetectionConfidence:0.45,minPosePresenceConfidence:0.45,minTrackingConfidence:0.45})
+      if(cancelled){landmarker.close()}else {poseLandmarkerRef.current=landmarker;setPoseReady(true)}
+    }catch(e){console.warn('No se pudo cargar la IA de movimiento',e)}
+    finally{poseLoadingRef.current=false}
+  }
+  if(cameraOn)void loadPose()
+  return()=>{cancelled=true}
+},[cameraOn])
+
+useEffect(()=>{
+  if(!cameraOn||!videoRef.current)return
+  const v=videoRef.current
+  let raf=0
+  let stopped=false
+  const resetMovement=()=>{previousPoseRef.current=null;poseHistoryRef.current=[];movementScoreRef.current=0;poseFrameCountRef.current=0;poseVisibleFrameCountRef.current=0;lastPoseTimeRef.current=0;lastMoveAtRef.current=0;patternScoreRef.current=0;lastMoveBonusRef.current=0;setAura(0);setMoveBonus(0);setDetectedMove('Esperando movimiento…')}
+  if(!battleStarted)resetMovement()
+  const scorePose=()=>{
+    if(stopped)return
+    if(v.readyState>=2&&poseLandmarkerRef.current){
+      const now=performance.now()
+      if(now-lastPoseTimeRef.current>=120){
+        lastPoseTimeRef.current=now
+        try{
+          const result=poseLandmarkerRef.current.detectForVideo(v,now)
+          const lm=result.landmarks?.[0]
+          poseFrameCountRef.current+=1
+          if(lm&&lm.length>=29){
+            poseVisibleFrameCountRef.current+=1
+            const ids=[11,12,13,14,15,16,23,24,25,26,27,28]
+            const current=ids.map(i=>({x:lm[i].x,y:lm[i].y,z:lm[i].z,visibility:lm[i].visibility??1}))
+            const valid=current.filter(p=>p.visibility>0.35)
+            const prev=previousPoseRef.current
+            if(prev&&valid.length>=8){
+              let movement=0,weight=0
+              for(let i=0;i<current.length;i++){
+                const a=current[i],b=prev[i]
+                if(a.visibility<=0.35||b.visibility<=0.35)continue
+                const d=Math.hypot(a.x-b.x,a.y-b.y,(a.z-b.z)*0.35)
+                movement+=Math.min(0.18,d);weight+=1
+              }
+              if(weight){
+                const shoulderWidth=Math.max(0.08,Math.hypot(current[0].x-current[1].x,current[0].y-current[1].y))
+                const hipWidth=Math.max(0.08,Math.hypot(current[6].x-current[7].x,current[6].y-current[7].y))
+                const bodyScale=Math.max(0.12,(shoulderWidth+hipWidth)/2)
+                const normalized=(movement/weight)/bodyScale
+                movementScoreRef.current+=Math.min(0.11,Math.max(0,normalized))
+              }
+            }
+            previousPoseRef.current=current
+
+            // Historial corto para reconocer patrones básicos de farmeo de aura.
+            poseHistoryRef.current.push(current)
+            if(poseHistoryRef.current.length>14)poseHistoryRef.current.shift()
+
+            const nose=lm[0], ls=lm[11], rs=lm[12], le=lm[13], re=lm[14], lw=lm[15], rw=lm[16], lh=lm[23], rh=lm[24], lk=lm[25], rk=lm[26], la=lm[27], ra=lm[28]
+            const dist=(a:any,b:any)=>Math.hypot(a.x-b.x,a.y-b.y)
+            const avg=(a:any,b:any)=>({x:(a.x+b.x)/2,y:(a.y+b.y)/2})
+            const shoulder=Math.max(0.08,dist(ls,rs))
+            const hip=Math.max(0.08,dist(lh,rh))
+            const body=Math.max(0.12,(shoulder+hip)/2)
+            const wristsAtChest=lw.y>Math.min(ls.y,rs.y)&&lw.y<Math.max(lh.y,rh.y)+body*0.2&&rw.y>Math.min(ls.y,rs.y)&&rw.y<Math.max(lh.y,rh.y)+body*0.2
+            const handsWide=dist(lw,rw)>shoulder*1.8
+            const armsRaised=lw.y<ls.y&&rw.y<rs.y
+            const handNearFace=dist(lw,nose)<body*0.85||dist(rw,nose)<body*0.85
+            const upright=Math.abs(((ls.y+rs.y)/2)-((lh.y+rh.y)/2))>body*0.75
+            const hist=poseHistoryRef.current
+            let moveName='Movimiento libre', bonus=0
+            if(hist.length>=8){
+              const first=hist[0], last=hist[hist.length-1]
+              const fL=first[4], fR=first[5], lL=last[4], lR=last[5]
+              const wristSwing=Math.abs((lL.x-fL.x)) + Math.abs((lR.x-fR.x))
+              const last2=hist[hist.length-2]
+              const alternation=Math.abs((lL.x-last2[4].x)) + Math.abs((lR.x-last2[5].x))
+              const ankleTravel=Math.abs(last[10].x-first[10].x)+Math.abs(last[11].x-first[11].x)+Math.abs(last[10].y-first[10].y)+Math.abs(last[11].y-first[11].y)
+              const jump=first[8].y-last[8].y>body*0.35 || first[9].y-last[9].y>body*0.35
+              if(handNearFace&&upright){ moveName='😐 MEWING'; bonus=8 }
+              else if(wristsAtChest&&wristSwing>body*0.55&&alternation>body*0.12){ moveName='🙌 SIX-SEVEN'; bonus=12 }
+              else if(handsWide&&armsRaised&&(jump||wristSwing>body*0.8)){ moveName='⚡ SIUUU'; bonus=14 }
+              else if(ankleTravel>body*0.8){ moveName='🚶 AURA WALK'; bonus=10 }
+              else if(wristSwing>body*0.55||armsRaised){ moveName='✋ GESTO DE AURA'; bonus=6 }
+            }
+            // Una pose controlada también cuenta: evita premiar simplemente agitarse.
+            if(bonus===0&&upright&&movementScoreRef.current<1.4&&hist.length>=6){ moveName='🧍 POSE DE AURA'; bonus=5 }
+            const nowMove=performance.now()
+            if(bonus>0&&nowMove-lastMoveAtRef.current>900){
+              lastMoveAtRef.current=nowMove
+              patternScoreRef.current=Math.min(20,patternScoreRef.current+bonus)
+              lastMoveBonusRef.current=bonus
+              setDetectedMove(moveName)
+              setMoveBonus(bonus)
+            }
+          }
+          const presence=poseFrameCountRef.current?poseVisibleFrameCountRef.current/poseFrameCountRef.current:0
+          const motionPart=Math.min(100,(movementScoreRef.current/4.2)*100)
+          const patternBonus=Math.min(20,patternScoreRef.current)
+          const score=Math.round(Math.min(100,motionPart*0.72+presence*8+patternBonus))
+          setAura(score)
+          if(battleStarted)socket.emit('aura-score',score)
+        }catch(e){console.warn('Pose analysis frame error',e)}
+      }
+    }
+    raf=requestAnimationFrame(scorePose)
+  }
+  raf=requestAnimationFrame(scorePose)
+  return()=>{stopped=true;cancelAnimationFrame(raf)}
+},[cameraOn,battleStarted])
 
  async function handleAuth(e:FormEvent){e.preventDefault();setAuthMsg('');try{if(authMode==='register'){if(name.trim().length<2)return setAuthMsg('Escribe un nombre de jugador.');if(password!==password2)return setAuthMsg('Las contraseñas no coinciden.');if(password.length<6)return setAuthMsg('La contraseña debe tener al menos 6 caracteres.');const c=await createUserWithEmailAndPassword(auth,email,password);const clean=name.trim();await updateProfile(c.user,{displayName:clean});await setDoc(doc(db,'users',c.user.uid),{uid:c.user.uid,nombre:clean,nombreLower:clean.toLowerCase(),email,aura:0,victorias:0,derrotas:0,level:1,createdAt:serverTimestamp()},{merge:true})}else await signInWithEmailAndPassword(auth,email,password)}catch(e:any){setAuthMsg(e?.message?.replace('Firebase: Error (auth/','').replace(').','')||'No se pudo completar la operación.')}}
  async function resetPassword(){if(!email.trim()){setAuthMsg('Escribe tu correo para recuperar la contraseña.');return}try{await sendPasswordResetEmail(auth,email.trim());setResetSent(true);setAuthMsg('Te enviamos un enlace para restablecer tu contraseña.')}catch(e:any){setAuthMsg('No pudimos enviar el enlace de recuperación. Revisa el correo.')}}
@@ -273,9 +411,9 @@ useEffect(()=>{if(!cameraOn||!videoRef.current)return; const v=videoRef.current;
    if(videoRef.current) videoRef.current.srcObject=null
    if(remoteVideoRef.current) remoteVideoRef.current.srcObject=null
    peerRef.current?.close();peerRef.current=null
-   setCameraOn(false);setBothCamerasReady(false);setBattleStarted(false);setBattleSeconds(0);setBattleResult(null)
+   setCameraOn(false);setBothCamerasReady(false);setPoseReady(false);setBattleReady(false);setOpponentReady(false);setBattleStarted(false);setBattleSeconds(0);setBattleResult(null)
    battleResultHandledRef.current=false
-   setRoomCode('');setRoom('');setOpponentJoined(false);setOpponentAura(0);setAura(0);setRoomStatus('Listo.')
+   setRoomCode('');setRoom('');setOpponentJoined(false);setOpponentAura(0);setAura(0);movementScoreRef.current=0;previousPoseRef.current=null;poseFrameCountRef.current=0;poseVisibleFrameCountRef.current=0;setRoomStatus('Listo.')
    window.history.replaceState({auraTab:'home'},'',window.location.href)
    setTab('home')
  }
@@ -375,8 +513,13 @@ useEffect(()=>{if(!cameraOn||!videoRef.current)return; const v=videoRef.current;
    }
  }
  async function startBattle(){
-   if(!opponentJoined||!cameraOn||!bothCamerasReady){setRoomStatus('🎥 Espera a que las dos cámaras estén activas antes de iniciar la batalla.');return}
-   socket.emit('start')
+   if(battleReady){setRoomStatus('⏳ Ya estás listo. Esperando que el rival confirme.');return}
+   if(!opponentJoined||!cameraOn||!bothCamerasReady){setRoomStatus('🎥 Espera a que las dos cámaras estén activas antes de marcarte como listo.');return}
+   if(!poseLandmarkerRef.current){setRoomStatus('🧠 La IA de movimiento todavía está cargando. Espera unos segundos e inténtalo de nuevo.');return}
+   movementScoreRef.current=0;previousPoseRef.current=null;poseHistoryRef.current=[];poseFrameCountRef.current=0;poseVisibleFrameCountRef.current=0;lastMoveAtRef.current=0;patternScoreRef.current=0;lastMoveBonusRef.current=0;setAura(0);setMoveBonus(0);setDetectedMove('Esperando movimiento…')
+   setBattleReady(true)
+   setRoomStatus('⏳ ¡Estás listo! Esperando que el rival también pulse LISTO…')
+   socket.emit('battle-ready')
  }
  async function sendChat(e:FormEvent){e.preventDefault();const text=chatInput.trim();if(!text||!user)return;setChatMsg('');setChatInput('');try{await addDoc(collection(db,'chat'),{uid:user.uid,name:user.displayName||'Jugador',text,createdAt:serverTimestamp()})}catch(error){console.error('Global chat send error:',error);setChatInput(text);setChatMsg('⚠️ No se pudo enviar el mensaje. Revisa tu conexión e inicia sesión de nuevo si es necesario.')}}
  async function searchFriends(){
@@ -422,25 +565,26 @@ useEffect(()=>{if(!cameraOn||!videoRef.current)return; const v=videoRef.current;
       createdAt:serverTimestamp()
     },{merge:true})
     setFriendMsg(`📨 Solicitud enviada a ${f.name}.`)
-  }catch(error){
+  }catch(error:any){
     console.error('Friend request error:',error)
-    setFriendMsg('❌ No se pudo enviar la solicitud. Revisa las reglas de Firestore.')
+    setFriendMsg(`❌ No se pudo enviar la solicitud${error?.code?` (${error.code})`:''}.`)
   }
  }
  async function acceptFriendRequest(r:FriendRequest){
   if(!user)return
   try{
+    const pairId=[user.uid,r.senderId].sort().join('_')
+    await setDoc(doc(db,'friendships',pairId),{participants:[user.uid,r.senderId],createdAt:serverTimestamp()},{merge:true})
     await setDoc(doc(db,'users',user.uid),{friends:arrayUnion(r.senderId)},{merge:true})
-    await setDoc(doc(db,'users',r.senderId),{friends:arrayUnion(user.uid)},{merge:true})
     await deleteDoc(doc(db,'friendRequests',r.id))
     const fs=await getDoc(doc(db,'users',r.senderId))
     const x=fs.exists()?fs.data():{}
     const friend:Friend={id:r.senderId,name:String(x.nombre||x.name||x.displayName||r.senderName||'Jugador'),aura:Number(x.aura||r.senderAura||0)}
     setFriends(v=>v.some(f=>f.id===friend.id)?v:[...v,friend])
     setFriendMsg(`🤝 ${friend.name} ahora es tu amigo.`)
-  }catch(error){
+  }catch(error:any){
     console.error('Accept friend request error:',error)
-    setFriendMsg('❌ No se pudo aceptar la solicitud.')
+    setFriendMsg(`❌ No se pudo aceptar la solicitud${error?.code?` (${error.code})`:''}.`)
   }
  }
  async function rejectFriendRequest(r:FriendRequest){
@@ -473,7 +617,7 @@ useEffect(()=>{if(!cameraOn||!videoRef.current)return; const v=videoRef.current;
  async function joinClan(c:Clan){if(!user)return;await updateDoc(doc(db,'clans',c.id),{members:arrayUnion(user.uid)});alert('Te uniste al clan.')}
 
  if(!user)return <AuthScreen {...{authMode,setAuthMode,email,setEmail,password,setPassword,password2,setPassword2,name,setName,authMsg,setAuthMsg,handleAuth,resetPassword,resetSent,loginWithGoogle,lang,setLang,t}}/>
- return <div className={`app ${theme}`}><audio ref={battleMusicRef} src="/assets/audio/aura-battle-theme.wav" loop preload="auto" /><header className="topbar"><div className="brand">⚡ <span>AURA BATTLE</span><b>V5.143</b></div><div className="top-actions"><span className="online-pill">● {online} {t.online}</span><select value={lang} onChange={e=>setLang(e.target.value as Lang)}><option value="es">ES</option><option value="en">EN</option><option value="pt">PT</option><option value="fr">FR</option><option value="de">DE</option><option value="it">IT</option><option value="tr">TR</option><option value="ja">JA</option><option value="ko">KO</option><option value="zh">中文</option></select><button onClick={logout}>{t.logout}</button></div></header>
+ return <div className={`app ${theme}`}><audio ref={battleMusicRef} src="/assets/audio/aura-battle-theme.wav" loop preload="auto" /><header className="topbar"><div className="brand">⚡ <span>AURA BATTLE</span><b>V5.147</b></div><div className="top-actions"><span className="online-pill">● {online} {t.online}</span><select value={lang} onChange={e=>setLang(e.target.value as Lang)}><option value="es">ES</option><option value="en">EN</option><option value="pt">PT</option><option value="fr">FR</option><option value="de">DE</option><option value="it">IT</option><option value="tr">TR</option><option value="ja">JA</option><option value="ko">KO</option><option value="zh">中文</option></select><button onClick={logout}>{t.logout}</button></div></header>
  <div className="layout"><aside className="sidebar"><div className="mini-profile"><div className="profile-icon">⚡</div><div><strong>{user.displayName||'Jugador'}</strong><small>⚡ {profile.aura} Aura · Lv.{profile.level}</small></div></div>{nav.map(n=><button key={n} className={tab===n?'nav active':'nav'} onClick={()=>navigateTab(n)}>{icon(n)} {t[n]}</button>)}<div className="ad-slot side-ad">PUBLICIDAD<br/><small>Espacio para marcas</small></div></aside>
  <main className="content">
  {tab==='home'&&<section className="home-hero"><div className="hero-copy"><div className="eyebrow">⚡ ONLINE AURA ARENA</div><h1>{t.welcome}</h1><p>Compite en vivo, gana Aura y construye tu reputación.</p><div className="hero-actions"><button className="primary" onClick={()=>navigateTab('battle')}>⚔️ {t.play}</button><button onClick={()=>navigateTab('profile')}>👤 Mi perfil</button></div><div className="quick-stats"><Stat label="⚡ Tu Aura" value={profile.aura}/><Stat label="🏆 Victorias" value={profile.wins}/><Stat label="🔥 Nivel" value={profile.level}/></div></div><div className="hero-art"><img src="/assets/aura-arena-home.png" alt="AURA BATTLE Arena"/><div className="hero-glow">LIVE</div></div><div className="home-grid"><Card icon="⚔️" title="Batallas 1v1" text="Crea una sala y reta a otra persona con cámara." action={()=>navigateTab('battle')}/><Card icon="🤖" title="IA Aura" text="Convierte señales visuales de tu cámara en una métrica de Aura." action={()=>navigateTab('ai')}/><Card icon="🏆" title="Ranking global" text="Sube posiciones con tus victorias y puntuación." action={()=>navigateTab('ranking')}/><Card icon="🛡️" title="Clanes" text="Forma equipos y crea una comunidad alrededor de tu Aura." action={()=>navigateTab('clans')}/></div><div className="ad-slot banner-ad">ESPACIO PUBLICITARIO · AURA BATTLE</div></section>}
@@ -487,7 +631,7 @@ useEffect(()=>{if(!cameraOn||!videoRef.current)return; const v=videoRef.current;
    <p className="battle-result-sub">{battleResult.outcome==='draw'?'Ambos jugadores obtienen +10 Aura.':battleResult.outcome==='win'?'+25 Aura para ti.':'+5 Aura para ti.'}</p>
    <div className="battle-scoreboard"><div><span>TÚ</span><strong>⚡ {battleResult.localScore}</strong><small>{battleResult.outcome==='win'?'GANADOR':battleResult.outcome==='draw'?'EMPATE':'DERROTA'}</small></div><div className="score-vs">VS</div><div><span>RIVAL</span><strong>⚡ {battleResult.rivalScore}</strong><small>{battleResult.outcome==='loss'?'GANADOR':battleResult.outcome==='draw'?'EMPATE':'DERROTA'}</small></div></div>
    <button className="primary result-home-btn" onClick={returnToHome}>← Volver al inicio</button>
- </div>:<><div className="battle-intro"><div><h2>Entra a la arena</h2><p>Crea una sala y comparte el código con tu rival, o únete a una sala existente.</p></div><div className="live-dot">● LIVE</div></div><div className="room-card">{!roomCode?<div className="room-actions"><button className="primary" onClick={createRoom}>{t.create}</button><span>o</span><input maxLength={6} placeholder={t.code} value={room} onChange={e=>setRoom(e.target.value.toUpperCase())}/><button onClick={joinRoom}>{t.join}</button></div>:<><div className="room-code">{roomCode}</div><button className="copy-btn" onClick={()=>navigator.clipboard?.writeText(roomCode)}>📋 Copiar código</button><div className="status">{roomStatus}</div><div className="battle-actions"><button onClick={startCamera}>📷 {cameraOn?'CÁMARA ACTIVA':'ACTIVAR CÁMARA'}</button><button className="primary" disabled={!opponentJoined||!cameraOn||!bothCamerasReady} onClick={startBattle}>🔥 {battleStarted?'BATALLA EN CURSO':'INICIAR BATALLA'}</button>{battleStarted&&<button onClick={finishBattle}>🏁 Terminar y guardar resultado</button>}</div></>}</div><div className="video-grid"><VideoCard title={user.displayName||'Jugador 1'} videoRef={videoRef} score={aura} muted/><VideoCard title="Rival" videoRef={remoteVideoRef} score={opponentAura}/></div>{battleStarted&&<div className="battle-banner">🔥 BATALLA ACTIVA · ⏱️ {battleSeconds}s · ¡Sube tu Aura! <button className="music-toggle" onClick={()=>setMusicOn(v=>!v)}>{musicOn?'🔊 Música':'🔇 Música'}</button></div>}</>}</Panel>}
+ </div>:<><div className="battle-intro"><div><h2>Entra a la arena</h2><p>Crea una sala y comparte el código con tu rival, o únete a una sala existente.</p></div><div className="live-dot">● LIVE</div></div><div className="room-card">{!roomCode?<div className="room-actions"><button className="primary" onClick={createRoom}>{t.create}</button><span>o</span><input maxLength={6} placeholder={t.code} value={room} onChange={e=>setRoom(e.target.value.toUpperCase())}/><button onClick={joinRoom}>{t.join}</button></div>:<><div className="room-code">{roomCode}</div><button className="copy-btn" onClick={()=>navigator.clipboard?.writeText(roomCode)}>📋 Copiar código</button><div className="status">{roomStatus}</div><div className="battle-actions"><button onClick={startCamera}>📷 {cameraOn?'CÁMARA ACTIVA':'ACTIVAR CÁMARA'}</button><button className="primary" disabled={!opponentJoined||!cameraOn||!bothCamerasReady||!poseReady||battleStarted} onClick={startBattle}>🔥 {battleStarted?'BATALLA EN CURSO':!poseReady?'CARGANDO IA…':battleReady?'⏳ LISTO — ESPERANDO RIVAL':opponentReady?'⚔️ RIVAL LISTO · YO TAMBIÉN':'✓ ESTOY LISTO'}</button>{battleStarted&&<button onClick={finishBattle}>🏁 Terminar y guardar resultado</button>}</div></>}</div><div className="video-grid"><VideoCard title={user.displayName||'Jugador 1'} videoRef={videoRef} score={aura} muted/><VideoCard title="Rival" videoRef={remoteVideoRef} score={opponentAura}/></div>{battleStarted&&<div className="battle-banner"><div>🧠 IA ANALIZANDO · ⏱️ {battleSeconds}s · ⚡ {aura} Aura</div><div className="move-detection">{detectedMove}{moveBonus>0&&<span> +{moveBonus}</span>}</div> <button className="music-toggle" onClick={()=>setMusicOn(v=>!v)}>{musicOn?'🔊 Música':'🔇 Música'}</button></div>}</>}</Panel>}
  {tab==='ai'&&<Panel title="🤖 IA Aura"><div className="training-notice"><strong>🎯 ÁREA DE ENTRENAMIENTO</strong><span>Usa esta sección para practicar y aprender a controlar tu Aura antes de entrar a batallas de farmeo de Aura.</span><small>⚠️ El Aura mostrado aquí es de entrenamiento y no suma Aura a tu perfil.</small></div><div className="ai-camera-card"><div className="ai-camera-frame"><video ref={aiVideoRef} autoPlay playsInline muted/>{!cameraOn&&<div className="ai-camera-placeholder">📷<span>Activa tu cámara para entrenar y ver tu Aura aquí</span></div>}<div className="ai-camera-badge">{cameraOn?'● CÁMARA ACTIVA':'● CÁMARA INACTIVA'}</div>{cameraOn&&<div className="ai-aura-overlay"><span>⚡ AURA</span><b>{aura}</b></div>}</div><div className="ai-aura-label">⚡ Aura detectada: <strong>{aura}</strong></div><div className="ai-meter"><div className="meter-fill" style={{width:`${aura}%`}}/></div></div><div className="ai-hero"><div><h2>Tu Aura de entrenamiento</h2><div className="aura-number">{aura}</div><p>La lectura es una métrica visual local de demostración para practicar antes de entrar a una batalla.</p></div><div className="ai-orb">⚡</div></div><button className="primary" onClick={startCamera}>{cameraOn?'✓ Cámara conectada':'📷 Activar cámara'}</button><div className="notice">Consejo: buena iluminación, rostro visible y encuadre estable ayudan a obtener una señal visual más consistente.</div></Panel>}
  {tab==='ranking'&&<Panel title="🏆 Ranking global"><div className="podium"><div>🥈 {leaders[1]?.name||'—'}<b>{leaders[1]?.aura||0}</b></div><div>🥇 {leaders[0]?.name||'—'}<b>{leaders[0]?.aura||0}</b></div><div>🥉 {leaders[2]?.name||'—'}<b>{leaders[2]?.aura||0}</b></div></div><div className="leader-list">{leaders.map((x,i)=><div className="leader" key={x.id}><span>#{i+1} · {x.name}</span><b>⚡ {x.aura}</b></div>)}</div></Panel>}
  {tab==='league'&&<Panel title="🥇 Liga"><div className="league-card"><div className="league-badge">⚡</div><h2>Bronce</h2><p>Gana batallas para subir a Plata, Oro y las divisiones superiores.</p><div className="progress"><span style={{width:`${Math.min(100,(profile.wins*10)%101)}%`}}/></div><small>{profile.wins*10} / 100 puntos de ascenso</small></div><div className="three-col"><Stat label="Temporada" value="01"/><Stat label="Victorias" value={profile.wins}/><Stat label="Nivel" value={profile.level}/></div></Panel>}
@@ -507,7 +651,7 @@ function AuthScreen(p:any){
   return (
     <div className="auth-shell">
       <div className="auth-brand">
-        <div className="brand">⚡ <span>AURA BATTLE</span><b>V5.143</b></div>
+        <div className="brand">⚡ <span>AURA BATTLE</span><b>V5.147</b></div>
         <p>La arena donde tu Aura habla por ti.</p>
       </div>
 

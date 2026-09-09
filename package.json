@@ -1,6 +1,6 @@
 {
-  "name": "aura-battle-v5-144",
-  "version": "5.144",
+  "name": "aura-battle-v5-147",
+  "version": "5.148",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,6 +9,7 @@
     "start": "node server.js"
   },
   "dependencies": {
+    "@mediapipe/tasks-vision": "^1.0.1",
     "firebase": "^12.1.0",
     "express": "^4.21.2",
     "react": "^19.1.1",

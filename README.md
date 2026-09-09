@@ -18,3 +18,11 @@ En Firebase Console:
 4. Comprobar que el dominio de producción de AURA BATTLE esté autorizado.
 
 Documentación oficial: https://firebase.google.com/docs/auth/web/google-signin
+
+
+## v5.148 — IA de movimiento
+La batalla usa MediaPipe Pose Landmarker en el dispositivo para detectar puntos del cuerpo y convertir el movimiento observado durante los 15 segundos en una puntuación 0-100. El video no se envía a un servidor para el análisis; se emite únicamente la puntuación al servidor de batalla.
+
+
+### Reconocimiento de movimientos básicos
+La IA de v5.148 usa MediaPipe Pose para detectar patrones aproximados de: Mewing, Six-Seven, Siuuu, Aura Walk, gestos de brazos y Pose de Aura. Cada patrón válido aporta un bono limitado al Aura, mientras el movimiento general aporta la puntuación base. La detección es heurística y se ejecuta en el dispositivo; no se envía el video al servidor.

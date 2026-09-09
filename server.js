@@ -14,7 +14,7 @@ const battleTimers = new Map()
 
 const distPath = path.resolve(__dirname, 'dist')
 app.use(express.static(distPath))
-app.get('/health', (_req, res) => res.json({ ok: true, service: 'aura-battle-v4-5-pruebas' }))
+app.get('/health', (_req, res) => res.json({ ok: true, service: 'aura-battle-v5-148' }))
 
 function makeCode() {
   return Math.random().toString(36).slice(2, 8).toUpperCase()
@@ -39,6 +39,7 @@ io.on('connection', (socket) => {
     socket.data.room = null
     socket.data.cameraReady = false
     socket.data.auraScore = 0
+    socket.data.battleReady = false
     let roomCode
     do roomCode = makeCode(); while (rooms.has(roomCode))
     rooms.set(roomCode, [socket.id])
@@ -70,6 +71,7 @@ io.on('connection', (socket) => {
     socket.data.room = roomCode
     socket.data.cameraReady = false
     socket.data.auraScore = 0
+    socket.data.battleReady = false
     cb?.({ ok: true, code: roomCode, host: false })
     socket.to(roomCode).emit('peer-joined')
   })
@@ -79,6 +81,7 @@ io.on('connection', (socket) => {
     const room = roomCode && rooms.get(roomCode)
     if (!room) return
     socket.data.cameraReady = true
+    socket.data.battleReady = false
     socket.to(roomCode).emit('peer-camera-ready')
     const readyCount = room.filter(id => io.sockets.sockets.get(id)?.data.cameraReady).length
     if (room.length === 2 && readyCount === 2) io.to(roomCode).emit('both-cameras-ready')
@@ -89,11 +92,23 @@ io.on('connection', (socket) => {
     if (room) socket.to(room).emit('signal', message)
   })
 
-  socket.on('start', () => {
+  socket.on('battle-ready', () => {
     const roomCode = socket.data.room
     const room = roomCode && rooms.get(roomCode)
-    if (!room || room.length !== 2) return
+    if (!room || room.length !== 2 || !socket.data.cameraReady) return
     if (battleTimers.has(roomCode)) return
+
+    socket.data.battleReady = true
+    const readyCount = room.filter(id => io.sockets.sockets.get(id)?.data.battleReady).length
+    io.to(roomCode).emit('battle-ready-status', {
+      readyCount,
+      total: 2,
+      ready: room.map(id => ({ id, ready: !!io.sockets.sockets.get(id)?.data.battleReady }))
+    })
+
+    // La batalla solo comienza cuando LOS DOS jugadores confirman que están listos.
+    if (readyCount !== 2) return
+
     const endsAt = Date.now() + 15000
     io.to(roomCode).emit('start', { endsAt })
     const timer = setTimeout(() => {
@@ -116,6 +131,7 @@ io.on('connection', (socket) => {
     const a = Number(io.sockets.sockets.get(players[0])?.data.auraScore) || 0
     const b = Number(io.sockets.sockets.get(players[1])?.data.auraScore) || 0
     io.to(roomCode).emit('battle-ended', { aura1: a, aura2: b, winnerId: a === b ? null : (a > b ? players[0] : players[1]) })
+    players.forEach(id => { const s = io.sockets.sockets.get(id); if (s) s.data.battleReady = false })
   })
 
   socket.on('aura-score', (score) => {
@@ -133,6 +149,7 @@ io.on('connection', (socket) => {
     if (!room) return
     const next = room.filter(id => id !== socket.id)
     socket.data.cameraReady = false
+    socket.data.battleReady = false
     if (next.length) rooms.set(roomCode, next)
     else rooms.delete(roomCode)
     socket.to(roomCode).emit('peer-left')
@@ -146,6 +163,6 @@ app.get('*', (_req, res) => {
 
 const port = Number(process.env.PORT) || 3000
 server.listen(port, '0.0.0.0', () => {
-  console.log(`AURA BATTLE V5.139 listening on port ${port}`)
+  console.log(`AURA BATTLE V5.148 listening on port ${port}`)
   console.log(`Serving frontend from ${distPath}`)
 })
