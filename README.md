@@ -29,13 +29,13 @@ La detección automática de contenido es una medida de seguridad y puede equivo
 - 👁️ Al abrir un chat privado, sus mensajes pendientes se marcan como vistos en ese dispositivo.
 
 
-### v5.162
+### v5.162.1
 - Botón «⚔️ Invitar a batalla» dentro del chat privado de amigos.
 - El invitado recibe la invitación en Notificaciones.
 - Al aceptar, entra directamente a la sala sin introducir código.
 
 
-## v5.162 — Creación y búsqueda de Clanes
+## v5.162.1 — Creación y búsqueda de Clanes
 - Nueva base visual y funcional de Clanes.
 - Crear clan con nombre, etiqueta, descripción, emblema y privacidad.
 - Crear clan cuesta 100 Aura.

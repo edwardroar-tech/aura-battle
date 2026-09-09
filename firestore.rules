@@ -74,9 +74,19 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    match /clanTags/{tag} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.tag == tag;
+      allow update: if signedIn() && request.resource.data.tag == tag;
+      allow delete: if false;
+    }
+
     match /clans/{clanId} {
       allow read: if signedIn();
-      allow create: if signedIn() && request.resource.data.owner == request.auth.uid;
+      allow create: if signedIn() && request.resource.data.owner == request.auth.uid
+        && request.resource.data.tag is string
+        && request.resource.data.tag.size() >= 2
+        && request.resource.data.tag.size() <= 6;
       allow update: if signedIn() && request.auth.uid in resource.data.members
         && request.resource.data.members.size() <= 1000;
       allow delete: if signedIn() && resource.data.owner == request.auth.uid;

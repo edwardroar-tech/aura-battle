@@ -14,7 +14,7 @@ const battleTimers = new Map()
 
 const distPath = path.resolve(__dirname, 'dist')
 app.use(express.static(distPath))
-app.get('/health', (_req, res) => res.json({ ok: true, service: 'aura-battle-v5-162' }))
+app.get('/health', (_req, res) => res.json({ ok: true, service: 'aura-battle-v5-162-1' }))
 
 function makeCode() {
   return Math.random().toString(36).slice(2, 8).toUpperCase()
@@ -176,6 +176,6 @@ app.get('*', (_req, res) => {
 
 const port = Number(process.env.PORT) || 3000
 server.listen(port, '0.0.0.0', () => {
-  console.log(`AURA BATTLE V5.162 listening on port ${port}`)
+  console.log(`AURA BATTLE V5.162.1 listening on port ${port}`)
   console.log(`Serving frontend from ${distPath}`)
 })

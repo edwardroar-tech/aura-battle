@@ -474,3 +474,31 @@ button,input,select{border-radius:14px}
 .clan-card{position:relative;padding:18px;border:1px solid rgba(255,255,255,.1);border-radius:18px;background:rgba(255,255,255,.035);min-height:180px}
 .clan-card h3{margin:4px 0 6px 48px}.clan-card p{color:#aeb5ca;line-height:1.4;margin:6px 0}.clan-card small{color:#737c96}.clan-emblem{position:absolute;left:16px;top:16px;width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:rgba(126,102,255,.16);font-size:20px}.clan-tag{font-size:12px;font-weight:800;color:#8d9aff!important}
 @media(max-width:700px){.clan-form-grid{grid-template-columns:1fr 1fr}.clan-form-grid textarea{grid-column:1/-1}.clan-create-foot{align-items:flex-start;flex-direction:column}.clan-create-foot button{width:100%}}
+
+/* v5.162.1 — Clanes: formulario móvil y etiqueta automática */
+.clan-form-grid{grid-template-columns:minmax(0,1.45fr) minmax(190px,.75fr);gap:14px 16px;align-items:start}
+.clan-field{min-width:0;position:relative}
+.clan-field label{display:block;margin:0 0 7px;font-size:13px;font-weight:800;color:#bfc6df}
+.clan-field label small{font-weight:600;color:#858ca6}
+.clan-field input,.clan-field select,.clan-field textarea{width:100%;min-width:0;background:#090b16;color:#fff;border:1px solid #343650;border-radius:14px;padding:13px 14px;outline:none}
+.clan-field input,.clan-field select{min-height:48px}
+.clan-field textarea{min-height:108px;resize:vertical}
+.clan-field input:focus,.clan-field select:focus,.clan-field textarea:focus{border-color:#7568ff;box-shadow:0 0 0 3px #6b5cff1f}
+.clan-tag-input{color:#c9c2ff!important;background:rgba(91,80,255,.10)!important;font-weight:900;letter-spacing:1px;text-align:center}
+.clan-field-help{display:block;margin-top:6px;color:#7f88a3;font-size:11px;line-height:1.35}
+.clan-counter{display:block;text-align:right;margin-top:5px;color:#737c96;font-size:11px}
+.clan-description-field{grid-column:1/-1}
+.clan-visibility-field{grid-column:2}
+.clan-create-foot{padding-top:4px}
+.clan-card h3{margin:0 0 6px}
+@media(max-width:700px){
+  .clan-form-grid{grid-template-columns:1fr;gap:12px}
+  .clan-description-field,.clan-visibility-field{grid-column:auto}
+  .clan-field textarea{min-height:96px}
+  .clan-create{padding:14px}
+  .clan-create-foot{gap:10px}
+}
+@media(max-width:430px){
+  .clan-form-grid{gap:10px}
+  .clan-field input,.clan-field select,.clan-field textarea{font-size:16px}
+}
