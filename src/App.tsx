@@ -917,10 +917,24 @@ useEffect(()=>{
   if(clan.members?.includes(user.uid)){setClanMsg('ℹ️ Ya perteneces a este clan.');return}
   if(myClanId){setClanMsg('⚠️ Ya perteneces a un clan. Sal de tu clan actual antes de solicitar otro.');return}
   const requestId=`${clan.id}_${user.uid}`; const ref=doc(db,'clanJoinRequests',requestId)
-  try{const snap=await getDoc(ref); if(snap.exists()){const status=String(snap.data().status||''); if(status==='pending'){setClanMsg('ℹ️ Ya tienes una solicitud pendiente para este clan.');return} if(status==='accepted'){setClanMsg('ℹ️ Ya formas parte de este clan.');return}}
-    await setDoc(ref,{clanId:clan.id,requesterId:user.uid,requesterName:user.displayName||'Jugador',clanName:clan.name,status:'pending',createdAt:serverTimestamp()},{merge:true});
+  try{
+    const snap=await getDoc(ref)
+    if(snap.exists()){
+      const status=String(snap.data().status||'')
+      if(status==='pending'){setClanMsg('ℹ️ Ya tienes una solicitud pendiente para este clan.');return}
+      if(status==='accepted'){setClanMsg('ℹ️ Ya formas parte de este clan.');return}
+      // Una solicitud rechazada puede volver a enviarse. Eliminamos primero
+      // el documento anterior para que la siguiente operación sea CREATE,
+      // evitando que Firestore la interprete como UPDATE.
+      await deleteDoc(ref)
+    }
+    await setDoc(ref,{clanId:clan.id,requesterId:user.uid,requesterName:user.displayName||'Jugador',clanName:clan.name,status:'pending',createdAt:serverTimestamp()})
     setClanMsg(`✅ Solicitud enviada a [${clan.tag||'CLAN'}] ${clan.name}.`)
-  }catch(error:any){console.error('Join clan request error:',error);setClanMsg(`❌ No se pudo enviar la solicitud${error?.code?` (${error.code})`:''}.`)}
+  }catch(error:any){
+    console.error('Join clan request error:',error)
+    const code=error?.code||''
+    setClanMsg(`❌ No se pudo enviar la solicitud${code?` (${code})`:''}.`)
+  }
  }
  async function approveClanRequest(r:ClanJoinRequest){
   if(!user||!selectedClan||selectedClan.owner!==user.uid)return
