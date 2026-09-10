@@ -29,13 +29,13 @@ La detección automática de contenido es una medida de seguridad y puede equivo
 - 👁️ Al abrir un chat privado, sus mensajes pendientes se marcan como vistos en ese dispositivo.
 
 
-### v5.163.2.1
+### v5.164.1
 - Botón «⚔️ Invitar a batalla» dentro del chat privado de amigos.
 - El invitado recibe la invitación en Notificaciones.
 - Al aceptar, entra directamente a la sala sin introducir código.
 
 
-## v5.163.2.1 — Creación y búsqueda de Clanes
+## v5.164.1 — Creación y búsqueda de Clanes
 - Nueva base visual y funcional de Clanes.
 - Crear clan con nombre, etiqueta, descripción, emblema y privacidad.
 - Crear clan cuesta 100 Aura.
@@ -43,7 +43,7 @@ La detección automática de contenido es una medida de seguridad y puede equivo
 - Un usuario no puede crear otro clan mientras pertenezca a uno.
 - No incluye todavía solicitudes de ingreso, roles, chat ni desafíos; se reservan para versiones posteriores.
 
-### v5.163.2.1 — Miembros y solicitudes de ingreso
+### v5.164.1 — Miembros y solicitudes de ingreso
 - Vista detallada de cada clan.
 - Lista de miembros con Líder/Miembro.
 - Botón “Solicitar unirme al clan”.
@@ -51,3 +51,11 @@ La detección automática de contenido es una medida de seguridad y puede equivo
 - El Líder puede aceptar o rechazar solicitudes.
 - Un miembro puede salir del clan.
 - El Líder no puede salir todavía; la transferencia de liderazgo llegará en v5.164.
+
+
+## V5.164 — Notificaciones de batalla y clanes
+- ⚔️ Cuando existe una invitación de batalla pendiente de un amigo, aparece un aviso directamente arriba del cuadro de chat privado.
+- ✅ Desde ese aviso se puede aceptar o rechazar la invitación sin salir del chat.
+- 🛡️ Las solicitudes de ingreso a clanes generan notificaciones en la campana para el Líder y para el usuario indicado como Co-líder (`coLeader`).
+- 🔔 Las solicitudes de clan se integran al contador de notificaciones existentes.
+- 📱 Mantiene el diseño móvil y las funciones anteriores.

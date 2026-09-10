@@ -566,3 +566,25 @@ button,input,select{border-radius:14px}
 .clan-search input{flex:1;min-width:0}
 .clan-search button{min-height:48px;min-width:48px;padding:0 12px}
 .clan-search-status{display:block;margin-top:7px;color:#8f98b1}
+
+/* V5.163.5 — notificaciones de clanes y aviso de batalla dentro del chat privado */
+.private-battle-notice{margin:10px 0 12px;padding:13px 14px;border:1px solid rgba(126,102,255,.45);border-radius:15px;background:linear-gradient(135deg,rgba(105,77,255,.16),rgba(54,216,255,.07));box-shadow:0 8px 24px rgba(0,0,0,.18)}
+.private-battle-notice strong{display:block;font-size:14px;margin-bottom:4px}
+.private-battle-notice span{display:block;color:#aeb7cf;font-size:12px;margin-bottom:10px}
+.clan-notification-item{border-color:rgba(126,102,255,.24)!important}
+@media(max-width:520px){.private-battle-notice{margin-top:9px;padding:12px}.private-battle-notice strong{font-size:13px}}
+
+/* v5.164 — Administración de Clanes */
+.clan-member-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px;width:100%}
+.clan-member-actions button{padding:7px 9px;font-size:12px}
+.clan-admin-invite{margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.08)}
+.clan-admin-invite h3{margin:0 0 10px}
+.clan-invite-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;margin-top:7px;border-radius:12px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.06)}
+.clan-invite-row span{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.clan-invite-row button{padding:7px 10px;flex:0 0 auto}
+.clan-leader-warning{margin-top:14px;padding:11px 12px;border-radius:12px;background:rgba(255,193,7,.08);border:1px solid rgba(255,193,7,.22);color:#ffd76a;font-size:13px}
+@media (max-width:640px){
+  .clan-member-actions{display:grid;grid-template-columns:1fr 1fr}
+  .clan-member-actions button{width:100%}
+  .clan-invite-row{min-height:48px}
+}
