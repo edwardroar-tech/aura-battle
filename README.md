@@ -1,6 +1,6 @@
-# AURA BATTLE V5.160
+# Aura farming battles V5.164.3
 
-AURA BATTLE es una arena 1v1 con cámara, WebRTC, Socket.IO, Firebase y análisis local de movimiento con MediaPipe Pose.
+Aura farming battles es una arena 1v1 con cámara, WebRTC, Socket.IO, Firebase y análisis local de movimiento con MediaPipe Pose.
 
 ## Cambios acumulados de V5.155
 - 🧠 IA Aura: entrenamiento de 15 segundos con medidor de Aura en tiempo real.
@@ -29,13 +29,13 @@ La detección automática de contenido es una medida de seguridad y puede equivo
 - 👁️ Al abrir un chat privado, sus mensajes pendientes se marcan como vistos en ese dispositivo.
 
 
-### v5.164.1
+### v5.164.2.1
 - Botón «⚔️ Invitar a batalla» dentro del chat privado de amigos.
 - El invitado recibe la invitación en Notificaciones.
 - Al aceptar, entra directamente a la sala sin introducir código.
 
 
-## v5.164.1 — Creación y búsqueda de Clanes
+## v5.164.2.1 — Creación y búsqueda de Clanes
 - Nueva base visual y funcional de Clanes.
 - Crear clan con nombre, etiqueta, descripción, emblema y privacidad.
 - Crear clan cuesta 100 Aura.
@@ -43,17 +43,17 @@ La detección automática de contenido es una medida de seguridad y puede equivo
 - Un usuario no puede crear otro clan mientras pertenezca a uno.
 - No incluye todavía solicitudes de ingreso, roles, chat ni desafíos; se reservan para versiones posteriores.
 
-### v5.164.1 — Miembros y solicitudes de ingreso
+### v5.164.2.1 — Miembros y solicitudes de ingreso
 - Vista detallada de cada clan.
 - Lista de miembros con Líder/Miembro.
 - Botón “Solicitar unirme al clan”.
 - Solicitudes únicas por jugador y clan.
 - El Líder puede aceptar o rechazar solicitudes.
 - Un miembro puede salir del clan.
-- El Líder no puede salir todavía; la transferencia de liderazgo llegará en v5.164.
+- El Líder no puede salir todavía; la transferencia de liderazgo llegará en v5.164.2.
 
 
-## V5.164 — Notificaciones de batalla y clanes
+## V5.164.2 — Notificaciones de batalla y clanes
 - ⚔️ Cuando existe una invitación de batalla pendiente de un amigo, aparece un aviso directamente arriba del cuadro de chat privado.
 - ✅ Desde ese aviso se puede aceptar o rechazar la invitación sin salir del chat.
 - 🛡️ Las solicitudes de ingreso a clanes generan notificaciones en la campana para el Líder y para el usuario indicado como Co-líder (`coLeader`).
@@ -61,6 +61,11 @@ La detección automática de contenido es una medida de seguridad y puede equivo
 - 📱 Mantiene el diseño móvil y las funciones anteriores.
 
 
-### v5.164.1 hotfix
+### v5.164.2.1 hotfix
 - Limpieza de invitaciones de clan pendientes al expulsar un miembro.
 - Evita que el botón muestre “📨 Enviada” por una invitación pendiente antigua después de una expulsión.
+
+
+### V5.164.3 — Corrección visual de administración de clanes
+- Eliminado el botón duplicado “Expulsar” en la tarjeta de miembros.
+- La acción de expulsar aparece una sola vez para quien tenga permiso.
