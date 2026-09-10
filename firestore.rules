@@ -82,11 +82,10 @@ service cloud.firestore {
     }
 
     match /clanJoinRequests/{requestId} {
-      allow read: if signedIn()
-        && (
-          resource.data.requesterId == request.auth.uid
-          || get(/databases/$(database)/documents/clans/$(resource.data.clanId)).data.owner == request.auth.uid
-        );
+      // La lectura autenticada permite comprobar si una solicitud determinista
+      // ya existe antes de crearla. La UI sigue mostrando únicamente las
+      // solicitudes del usuario o del líder del clan.
+      allow read: if signedIn();
 
       allow create: if signedIn()
         && request.resource.data.requesterId == request.auth.uid
