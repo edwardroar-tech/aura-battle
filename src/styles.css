@@ -595,3 +595,48 @@ button,input,select{border-radius:14px}
 .clan-invite-row button:active:not(:disabled){transform:translateY(0);box-shadow:none}
 .clan-invite-row button:disabled{cursor:not-allowed;opacity:.72;transform:none;box-shadow:none}
 .clan-invite-row button.clan-invite-sent{opacity:.72}
+
+
+/* v5.164.5 — Espaciado móvil para WebView / Android
+   Evita que el contenido quede debajo de la barra inferior y respeta las áreas seguras. */
+html{min-height:100%;}
+body{min-height:100%;}
+@media(max-width:850px){
+  body{
+    padding-bottom:calc(92px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  .app{
+    min-height:100dvh;
+  }
+  .topbar{
+    padding-top:env(safe-area-inset-top, 0px);
+    height:calc(68px + env(safe-area-inset-top, 0px));
+  }
+  .content{
+    padding-top:14px !important;
+    padding-bottom:calc(124px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  .mobile-bottom-nav{
+    left:8px;
+    right:8px;
+    bottom:max(8px, env(safe-area-inset-bottom, 0px));
+    height:62px;
+  }
+  .mobile-more{
+    left:8px;
+    right:8px;
+    bottom:calc(78px + env(safe-area-inset-bottom, 0px));
+  }
+}
+@media(max-width:430px){
+  .content{
+    padding-top:10px !important;
+    padding-bottom:calc(128px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  .mobile-bottom-nav{
+    left:8px;
+    right:8px;
+    bottom:max(8px, env(safe-area-inset-bottom, 0px));
+    height:60px;
+  }
+}

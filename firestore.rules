@@ -199,9 +199,8 @@ service cloud.firestore {
         && !(request.auth.uid in resource.data.members)
         && request.auth.uid in request.resource.data.members
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])
-        && get(/databases/$(database)/documents/clanJoinRequests/$(clanId)_invite_$(request.auth.uid)).data.kind == 'invite'
-        && get(/databases/$(database)/documents/clanJoinRequests/$(clanId)_invite_$(request.auth.uid)).data.receiverId == request.auth.uid
-        && get(/databases/$(database)/documents/clanJoinRequests/$(clanId)_invite_$(request.auth.uid)).data.status == 'pending';
+        && get(/databases/$(database)/documents/clanInvites/$(clanId)_$(request.auth.uid)).data.receiverId == request.auth.uid
+        && get(/databases/$(database)/documents/clanInvites/$(clanId)_$(request.auth.uid)).data.status == 'pending';
 
       allow delete: if signedIn() && resource.data.owner == request.auth.uid;
     }
