@@ -79,3 +79,12 @@ La detección automática de contenido es una medida de seguridad y puede equivo
 - Variable `VITE_FIREBASE_VAPID_KEY` en `.env.example`.
 
 Nota: para Web Push en producción se debe generar/configurar la clave pública VAPID del proyecto Firebase. Esta versión prepara el cliente FCM; la integración nativa de FCM del APK Android es un paso separado.
+
+
+## v5.166 — correcciones de chat, invitaciones y push
+
+Esta versión agrega entrega real de notificaciones FCM desde el servidor. Render debe tener la variable secreta `FIREBASE_SERVICE_ACCOUNT_JSON` con el JSON de una cuenta de servicio de Firebase Admin. No subas ese JSON a GitHub. Firebase recomienda mantener las credenciales de cuenta de servicio fuera del código y usarlas como credenciales del entorno del servidor.
+
+También recuerda publicar `firestore.rules` en el proyecto Firebase: el despliegue de Render no publica automáticamente las reglas de Firestore. Puedes hacerlo desde Firebase Console o con Firebase CLI. Las reglas de Firestore se aplican solo después de desplegarlas en el proyecto.
+
+Para el APK Android basado en WebView, esta versión detecta la WebView y no promete Web Push como si fuera Chrome. Para notificaciones con la app cerrada en un APK necesitamos completar la integración FCM nativa de Android.

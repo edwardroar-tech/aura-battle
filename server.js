@@ -3,6 +3,10 @@ import http from 'http'
 import { Server } from 'socket.io'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { initializeApp, cert } from 'firebase-admin/app'
+import { getAuth } from 'firebase-admin/auth'
+import { getFirestore } from 'firebase-admin/firestore'
+import { getMessaging } from 'firebase-admin/messaging'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -13,8 +17,65 @@ const rooms = new Map()
 const battleTimers = new Map()
 
 const distPath = path.resolve(__dirname, 'dist')
+app.use(express.json({ limit: '32kb' }))
 app.use(express.static(distPath))
-app.get('/health', (_req, res) => res.json({ ok: true, service: 'aura-farming-battles-v5-164-8' }))
+app.get('/health', (_req, res) => res.json({ ok: true, service: 'aura-farming-battles-v5-166' }))
+
+let adminReady = null
+function getAdmin(){
+  if(adminReady)return adminReady
+  try{
+    const raw=process.env.FIREBASE_SERVICE_ACCOUNT_JSON
+    if(!raw)throw new Error('FIREBASE_SERVICE_ACCOUNT_JSON no está configurada en Render.')
+    const serviceAccount=JSON.parse(raw)
+    const app=initializeApp({credential:cert(serviceAccount),projectId:serviceAccount.project_id||serviceAccount.projectId})
+    adminReady={app,auth:getAuth(app),db:getFirestore(app),messaging:getMessaging(app)}
+    return adminReady
+  }catch(error){
+    console.error('Firebase Admin init error:',error)
+    adminReady=null
+    throw error
+  }
+}
+
+app.post('/api/push', async (req,res)=>{
+  try{
+    const authHeader=String(req.headers.authorization||'')
+    if(!authHeader.startsWith('Bearer '))return res.status(401).json({ok:false,error:'missing-auth'})
+    const {auth,db,messaging}=getAdmin()
+    const decoded=await auth.verifyIdToken(authHeader.slice(7))
+    const userId=String(req.body?.userId||'')
+    const title=String(req.body?.title||'Aura farming battles').slice(0,120)
+    const body=String(req.body?.body||'Tienes una nueva notificación.').slice(0,300)
+    const url=String(req.body?.url||'/').slice(0,300)
+    if(!userId)return res.status(400).json({ok:false,error:'missing-userId'})
+    const snap=await db.doc(`users/${userId}`).get()
+    if(!snap.exists)return res.status(404).json({ok:false,error:'user-not-found'})
+    const data=snap.data()||{}
+    const tokens=Array.isArray(data.fcmTokens)?data.fcmTokens.filter(x=>typeof x==='string'&&x):[]
+    if(!tokens.length)return res.status(200).json({ok:true,sent:0,reason:'no-tokens'})
+    const messages=tokens.slice(0,500).map(token=>({token,notification:{title,body},data:{title,body,url}}))
+    const result=await messaging.sendEach(messages)
+    let removed=0
+    const invalid=[]
+    result.responses.forEach((r,i)=>{
+      if(!r.success){
+        const code=r.error?.code||''
+        if(code.includes('registration-token-not-registered')||code.includes('invalid-registration-token'))invalid.push(tokens[i])
+      }
+    })
+    if(invalid.length){
+      const remaining=tokens.filter(t=>!invalid.includes(t))
+      await db.doc(`users/${userId}`).update({fcmTokens:remaining})
+      removed=invalid.length
+    }
+    console.log('Push result', {from:decoded.uid,to:userId,successCount:result.successCount,failureCount:result.failureCount,removed})
+    res.json({ok:true,sent:result.successCount,failed:result.failureCount,removed})
+  }catch(error){
+    console.error('Push endpoint error:',error)
+    res.status(500).json({ok:false,error:error?.message||'push-error'})
+  }
+})
 
 function makeCode() {
   return Math.random().toString(36).slice(2, 8).toUpperCase()

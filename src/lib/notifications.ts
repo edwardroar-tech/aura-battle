@@ -1,4 +1,5 @@
 import { getMessaging, getToken, isSupported, onMessage, type MessagePayload } from 'firebase/messaging'
+import { auth } from './firebase'
 import { arrayUnion, doc, updateDoc } from 'firebase/firestore'
 import { db } from './firebase'
 
@@ -6,6 +7,11 @@ const DEFAULT_VAPID_KEY = 'BOc3DunZYYnDFUHYFWz5TS7rq56QFJaUy06nzJXKYHdnxIugkyUGe
 const VAPID_KEY = (import.meta.env.VITE_FIREBASE_VAPID_KEY || DEFAULT_VAPID_KEY).trim()
 
 export async function setupPushNotifications(uid:string, onForeground?: (payload:MessagePayload)=>void){
+  const ua=typeof navigator!=='undefined'?navigator.userAgent:''
+  const isAndroidWebView=/Android/i.test(ua)&&(/\bwv\b/i.test(ua)||/;\s*wv\)/i.test(ua)||!/Chrome\//i.test(ua))
+  if(isAndroidWebView){
+    return {ok:false, reason:'android-webview-native-required'} as const
+  }
   if(typeof window==='undefined' || !('Notification' in window) || !('serviceWorker' in navigator)){
     return {ok:false, reason:'unsupported'} as const
   }
@@ -28,5 +34,26 @@ export async function setupPushNotifications(uid:string, onForeground?: (payload
   }catch(error:any){
     console.error('FCM setup error:',error)
     return {ok:false, reason:error?.code||'error', error} as const
+  }
+}
+
+
+export async function notifyUser(userId:string,title:string,body:string,url='/'){
+  try{
+    if(!auth.currentUser)return false
+    const idToken=await auth.currentUser.getIdToken()
+    const response=await fetch('/api/push',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${idToken}`},
+      body:JSON.stringify({userId,title,body,url})
+    })
+    if(!response.ok){
+      console.warn('Push delivery failed:',response.status,await response.text())
+      return false
+    }
+    return true
+  }catch(error){
+    console.warn('Push delivery request failed:',error)
+    return false
   }
 }
