@@ -588,3 +588,10 @@ button,input,select{border-radius:14px}
   .clan-member-actions button{width:100%}
   .clan-invite-row{min-height:48px}
 }
+
+/* v5.164.1 — Botón de invitación a clan: estado visual y envío claros */
+.clan-invite-row button{appearance:none;-webkit-appearance:none;cursor:pointer;transform:none;transition:.18s ease;box-shadow:none}
+.clan-invite-row button:hover:not(:disabled){transform:translateY(-1px)}
+.clan-invite-row button:active:not(:disabled){transform:translateY(0);box-shadow:none}
+.clan-invite-row button:disabled{cursor:not-allowed;opacity:.72;transform:none;box-shadow:none}
+.clan-invite-row button.clan-invite-sent{opacity:.72}
