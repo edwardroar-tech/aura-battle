@@ -59,3 +59,8 @@ La detección automática de contenido es una medida de seguridad y puede equivo
 - 🛡️ Las solicitudes de ingreso a clanes generan notificaciones en la campana para el Líder y para el usuario indicado como Co-líder (`coLeader`).
 - 🔔 Las solicitudes de clan se integran al contador de notificaciones existentes.
 - 📱 Mantiene el diseño móvil y las funciones anteriores.
+
+
+### v5.164.1 hotfix
+- Limpieza de invitaciones de clan pendientes al expulsar un miembro.
+- Evita que el botón muestre “📨 Enviada” por una invitación pendiente antigua después de una expulsión.

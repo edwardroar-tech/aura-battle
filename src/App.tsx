@@ -989,7 +989,19 @@ useEffect(()=>{
   if(!user)return
   const admin=user.uid===clan.owner||user.uid===clan.coLeader
   if(!admin||memberId===clan.owner||memberId===clan.coLeader||memberId===user.uid)return
-  try{const updates:any={members:arrayRemove(memberId)}; if(clan.coLeader===memberId)updates.coLeader=null; await updateDoc(doc(db,'clans',clan.id),updates);setClanMsg('❌ Miembro expulsado del clan.')}catch(error:any){console.error('Kick clan member error:',error);setClanMsg(`❌ No se pudo expulsar al miembro${error?.code?` (${error.code})`:''}.`)}
+  try{
+    const updates:any={members:arrayRemove(memberId)}
+    if(clan.coLeader===memberId)updates.coLeader=null
+    await updateDoc(doc(db,'clans',clan.id),updates)
+    // Limpia una invitación pendiente antigua para que, si el jugador vuelve a ser invitado,
+    // el botón no aparezca falsamente como "📨 Enviada".
+    const inviteRef=doc(db,'clanJoinRequests',`${clan.id}_invite_${memberId}`)
+    const inviteSnap=await getDoc(inviteRef)
+    if(inviteSnap.exists() && inviteSnap.data().kind==='invite' && inviteSnap.data().status==='pending'){
+      await deleteDoc(inviteRef)
+    }
+    setClanMsg('❌ Miembro expulsado del clan.')
+  }catch(error:any){console.error('Kick clan member error:',error);setClanMsg(`❌ No se pudo expulsar al miembro${error?.code?` (${error.code})`:''}.`)}
  }
  async function transferClanLeadership(clan:Clan, memberId:string){
   if(!user||clan.owner!==user.uid||memberId===user.uid||!clan.members?.includes(memberId))return
