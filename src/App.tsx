@@ -947,8 +947,16 @@ useEffect(()=>{
     if(snap.exists()){
       const status=String(snap.data().status||'')
       if(status==='pending'){setClanMsg('ℹ️ Ya tienes una solicitud pendiente para este clan.');return}
-      if(status==='accepted'){setClanMsg('ℹ️ Ya formas parte de este clan.');return}
-      await deleteDoc(ref)
+      if(status==='accepted'){
+        // Una solicitud aceptada es histórica. Si el jugador ya salió del clan,
+        // no debe bloquear una nueva solicitud de ingreso.
+        const freshClan=await getDoc(doc(db,'clans',clan.id))
+        const freshMembers=freshClan.exists()&&Array.isArray(freshClan.data().members)?freshClan.data().members:[]
+        if(freshMembers.includes(user.uid)){setClanMsg('ℹ️ Ya formas parte de este clan.');return}
+        await deleteDoc(ref)
+      } else {
+        await deleteDoc(ref)
+      }
     }
     // Escritura simple y determinista: la regla CREATE de clanJoinRequests
     // solo necesita validar que requesterId coincida con el usuario autenticado.
