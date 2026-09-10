@@ -2,7 +2,8 @@ import { getMessaging, getToken, isSupported, onMessage, type MessagePayload } f
 import { arrayUnion, doc, updateDoc } from 'firebase/firestore'
 import { db } from './firebase'
 
-const VAPID_KEY = (import.meta.env.VITE_FIREBASE_VAPID_KEY || '').trim()
+const DEFAULT_VAPID_KEY = 'BOc3DunZYYnDFUHYFWz5TS7rq56QFJaUy06nzJXKYHdnxIugkyUGeXMe7XPIc1ZlmfRxaaXSfdfS15M6iLNQu2M'
+const VAPID_KEY = (import.meta.env.VITE_FIREBASE_VAPID_KEY || DEFAULT_VAPID_KEY).trim()
 
 export async function setupPushNotifications(uid:string, onForeground?: (payload:MessagePayload)=>void){
   if(typeof window==='undefined' || !('Notification' in window) || !('serviceWorker' in navigator)){
