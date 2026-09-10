@@ -116,8 +116,7 @@ service cloud.firestore {
     match /clanInvites/{inviteId} {
       allow read: if signedIn() && (
         resource.data.senderId == request.auth.uid ||
-        resource.data.receiverId == request.auth.uid ||
-        isClanManager(resource.data.clanId)
+        resource.data.receiverId == request.auth.uid
       );
 
       allow create: if signedIn()

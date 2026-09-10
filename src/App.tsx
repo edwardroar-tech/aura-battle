@@ -3,6 +3,7 @@ import type { FormEvent, ReactNode, RefObject } from 'react'
 import { FilesetResolver, PoseLandmarker } from '@mediapipe/tasks-vision'
 import { auth, db } from './lib/firebase'
 import { socket } from './lib/socket'
+import { setupPushNotifications } from './lib/notifications'
 import { createUserWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword, signInWithRedirect, signInWithPopup, getRedirectResult, GoogleAuthProvider, signOut, updateProfile, setPersistence, browserLocalPersistence } from 'firebase/auth'
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, arrayUnion, arrayRemove, where, writeBatch, increment, runTransaction } from 'firebase/firestore'
 
@@ -39,7 +40,7 @@ const nav:Tab[]=['home','profile','friends','chat','battle','ai','ranking','leag
 
 export default function App(){
  const [user,setUser]=useState(auth.currentUser); const [authReady,setAuthReady]=useState(false); const [authMode,setAuthMode]=useState<'choice'|'login'|'register'>('choice'); const [lang,setLang]=useState<Lang>('es')
- const [email,setEmail]=useState(''); const [password,setPassword]=useState(''); const [password2,setPassword2]=useState(''); const [name,setName]=useState(''); const [authMsg,setAuthMsg]=useState('')
+ const [email,setEmail]=useState(''); const [pushStatus,setPushStatus]=useState<'idle'|'loading'|'enabled'|'denied'|'error'>('idle'); const pushUnsubRef=useRef<(()=>void)|null>(null); const [password,setPassword]=useState(''); const [password2,setPassword2]=useState(''); const [name,setName]=useState(''); const [authMsg,setAuthMsg]=useState('')
  const [tab,setTab]=useState<Tab>('home'); const [profile,setProfile]=useState({aura:0,wins:0,losses:0,level:1})
  const [friendSearch,setFriendSearch]=useState(''); const [friends,setFriends]=useState<Friend[]>([]); const [friendResults,setFriendResults]=useState<Friend[]>([]); const [friendMsg,setFriendMsg]=useState(''); const [friendSearching,setFriendSearching]=useState(false); const [friendRequests,setFriendRequests]=useState<FriendRequest[]>([]); const [unreadFriendRequests,setUnreadFriendRequests]=useState<FriendRequest[]>([]); const [battleInvites,setBattleInvites]=useState<BattleInvite[]>([]); const [notificationOpen,setNotificationOpen]=useState(false); const [unreadPrivateMessages,setUnreadPrivateMessages]=useState<ChatMsg[]>([])
  const [chat,setChat]=useState<ChatMsg[]>([]); const [chatInput,setChatInput]=useState(''); const [chatLoading,setChatLoading]=useState(false); const [chatMsg,setChatMsg]=useState(''); const [privateFriend,setPrivateFriend]=useState<Friend|null>(null); const [privateChat,setPrivateChat]=useState<ChatMsg[]>([]); const [privateInput,setPrivateInput]=useState(''); const [privateLoading,setPrivateLoading]=useState(false); const [privateMsg,setPrivateMsg]=useState('')
@@ -84,40 +85,76 @@ export default function App(){
    let alive=true
    let unsubscribe:undefined|(()=>void)
    const bootAuth=async()=>{
-     try{
-       await setPersistence(auth,browserLocalPersistence)
-       const result=await getRedirectResult(auth)
-       if(alive && result?.user){
-         setUser(result.user);setAuthMode('choice');setTab('home');setAuthMsg('')
-       }
-     }catch(e:any){
-       console.error('Auth bootstrap error:',e)
-       if(alive && e?.code)setAuthMsg(e.message?.replace('Firebase: Error (auth/','').replace(').','')||'No se pudo completar el inicio de sesión.')
-     }
-     if(!alive)return
+     // Suscribimos primero a Auth: en Android WebView getRedirectResult puede tardar.
      unsubscribe=onAuthStateChanged(auth,async u=>{
        if(!alive)return
        setUser(u);setAuthReady(true);setPrivateFriend(null);setPrivateChat([])
        if(!u){setFriends([]);return}
        setAuthMode('choice');setTab('home');setNotificationOpen(false);setAuthMsg('')
-       const snap=await getDoc(doc(db,'users',u.uid))
-       if(snap.exists()){
-         const d=snap.data()
-         setProfile({aura:Number(d.aura||0),wins:Number(d.victorias||0),losses:Number(d.derrotas||0),level:Number(d.level||1)})
-         const ids=Array.isArray(d.friends)?d.friends:[]
-         const profiles=await Promise.all(ids.map(async(id:string)=>{
-           try{const fs=await getDoc(doc(db,'users',id));if(!fs.exists())return null;const x=fs.data();return{id,name:String(x.nombre||x.name||x.displayName||'Jugador'),aura:Number(x.aura||0)} as Friend}catch{return null}
-         }))
-         setFriends(profiles.filter(Boolean) as Friend[])
-       }else{
-         await setDoc(doc(db,'users',u.uid),{uid:u.uid,nombre:u.displayName||'Jugador',nombreLower:(u.displayName||'Jugador').toLowerCase(),email:u.email||'',aura:0,victorias:0,derrotas:0,level:1,friends:[],createdAt:serverTimestamp()},{merge:true})
-         setFriends([])
-       }
+       try{
+         const snap=await getDoc(doc(db,'users',u.uid))
+         if(snap.exists()){
+           const d=snap.data()
+           setProfile({aura:Number(d.aura||0),wins:Number(d.victorias||0),losses:Number(d.derrotas||0),level:Number(d.level||1)})
+           const ids=Array.isArray(d.friends)?d.friends:[]
+           const profiles=await Promise.all(ids.map(async(id:string)=>{
+             try{const fs=await getDoc(doc(db,'users',id));if(!fs.exists())return null;const x=fs.data();return{id,name:String(x.nombre||x.name||x.displayName||'Jugador'),aura:Number(x.aura||0)} as Friend}catch{return null}
+           }))
+           setFriends(profiles.filter(Boolean) as Friend[])
+         }else{
+           await setDoc(doc(db,'users',u.uid),{uid:u.uid,nombre:u.displayName||'Jugador',nombreLower:(u.displayName||'Jugador').toLowerCase(),email:u.email||'',aura:0,victorias:0,derrotas:0,level:1,friends:[],createdAt:serverTimestamp()},{merge:true})
+           setFriends([])
+         }
+       }catch(error){console.error('Auth profile bootstrap error:',error)}
      })
+     try{await setPersistence(auth,browserLocalPersistence)}catch(error){console.error('Auth persistence error:',error)}
+     try{
+       const result=await Promise.race([getRedirectResult(auth),new Promise<null>(resolve=>setTimeout(()=>resolve(null),8000))])
+       if(alive&&result?.user){setUser(result.user);setAuthMode('choice');setTab('home');setAuthMsg('')}
+     }catch(e:any){
+       console.error('Auth redirect bootstrap error:',e)
+       if(alive&&e?.code)setAuthMsg(e.message?.replace('Firebase: Error (auth/','').replace(').','')||'No se pudo completar el inicio de sesión.')
+     }finally{if(alive)setAuthReady(true)}
    }
    void bootAuth()
    return()=>{alive=false;unsubscribe?.()}
  },[])
+
+ useEffect(()=>{
+  let alive=true
+  pushUnsubRef.current?.()
+  pushUnsubRef.current=null
+  if(!user){setPushStatus('idle');return}
+  if(typeof window==='undefined' || !('Notification' in window)){setPushStatus('error');return}
+  if(Notification.permission==='denied'){setPushStatus('denied');return}
+  // No pedimos permiso automáticamente al iniciar: el jugador decide desde Ajustes.
+  if(Notification.permission!=='granted'){setPushStatus('idle');return}
+  setPushStatus('loading')
+  void setupPushNotifications(user.uid,payload=>{
+    const title=payload.notification?.title || String(payload.data?.title || 'Aura farming battles')
+    const body=payload.notification?.body || String(payload.data?.body || 'Tienes una nueva notificación.')
+    setAuthMsg('🔔 '+title+(body?' · '+body:''))
+  }).then(result=>{
+    if(!alive)return
+    if(result.ok){pushUnsubRef.current=result.unsubscribe;setPushStatus('enabled')}
+    else if(result.reason==='permission-denied'){setPushStatus('denied')}
+    else setPushStatus('error')
+  })
+  return()=>{alive=false;pushUnsubRef.current?.();pushUnsubRef.current=null}
+ },[user])
+
+ async function enablePushNotifications(){
+   if(!user)return
+   setPushStatus('loading')
+   const result=await setupPushNotifications(user.uid,payload=>{
+     const title=payload.notification?.title || String(payload.data?.title || 'Aura farming battles')
+     const body=payload.notification?.body || String(payload.data?.body || 'Tienes una nueva notificación.')
+     setAuthMsg('🔔 '+title+(body?' · '+body:''))
+   })
+   if(result.ok){pushUnsubRef.current=result.unsubscribe;setPushStatus('enabled');setAuthMsg('🔔 Notificaciones activadas en este dispositivo.')}
+   else if(result.reason==='permission-denied'){setPushStatus('denied');setAuthMsg('🔕 El permiso de notificaciones fue rechazado. Puedes activarlo desde los ajustes de Android/navegador.')}
+   else {setPushStatus('error');setAuthMsg('⚠️ No se pudieron activar las notificaciones. Comprueba HTTPS y la clave VAPID de Firebase.')}
+ }
 
  useEffect(()=>{
   if(!user){setFriendRequests([]);return}
@@ -591,22 +628,25 @@ useEffect(()=>{
  async function resetPassword(){if(!email.trim()){setAuthMsg('Escribe tu correo para recuperar la contraseña.');return}try{await sendPasswordResetEmail(auth,email.trim());setResetSent(true);setAuthMsg('Te enviamos un enlace para restablecer tu contraseña.')}catch(e:any){setAuthMsg('No pudimos enviar el enlace de recuperación. Revisa el correo.')}}
  async function loginWithGoogle(){
   setAuthMsg('')
+  const ua=typeof navigator!=='undefined'?navigator.userAgent:''
+  const isAndroidWebView=/Android/i.test(ua)&&(/\bwv\b/i.test(ua)||/;\s*wv\)/i.test(ua)||!/Chrome\//i.test(ua))
   try{
     await setPersistence(auth,browserLocalPersistence)
     const provider=new GoogleAuthProvider()
     provider.setCustomParameters({prompt:'select_account'})
+    if(isAndroidWebView){await signInWithRedirect(auth,provider);return}
     const result=await signInWithPopup(auth,provider)
     setUser(result.user);setAuthReady(true);setAuthMode('choice');setTab('home');setAuthMsg('')
   }catch(e:any){
     console.error('Google sign-in error:',e)
     const code=e?.code||''
     if(code==='auth/popup-blocked'||code==='auth/popup-cancelled-by-user'||code==='auth/cancelled-popup-request'){
-      try{const provider=new GoogleAuthProvider();provider.setCustomParameters({prompt:'select_account'});await signInWithRedirect(auth,provider);return}
-      catch(re:any){console.error('Google redirect fallback error:',re);setAuthMsg(re?.message?.replace('Firebase: Error (auth/','').replace(').','')||'No se pudo iniciar sesión con Google.');return}
+      try{const provider=new GoogleAuthProvider();provider.setCustomParameters({prompt:'select_account'});await signInWithRedirect(auth,provider);return}catch(re:any){setAuthMsg(re?.message?.replace('Firebase: Error (auth/','').replace(').','')||'No se pudo iniciar sesión con Google.');return}
     }
     setAuthMsg(e?.message?.replace('Firebase: Error (auth/','').replace(').','')||'No se pudo iniciar sesión con Google.')
   }
  }
+
  function returnToHome(){
    if(localStreamRef.current){localStreamRef.current.getTracks().forEach(t=>t.stop());localStreamRef.current=null}
    if(videoRef.current) videoRef.current.srcObject=null
@@ -1019,10 +1059,6 @@ useEffect(()=>{
     const inviteRef=doc(db,'clanInvites',`${clan.id}_${memberId}`)
     const inviteSnap=await getDoc(inviteRef)
     if(inviteSnap.exists() && inviteSnap.data().status==='pending') await deleteDoc(inviteRef)
-    // También limpia cualquier invitación antigua creada por v5.164 antes de separar la colección.
-    const legacyRef=doc(db,'clanJoinRequests',`${clan.id}_invite_${memberId}`)
-    const legacySnap=await getDoc(legacyRef)
-    if(legacySnap.exists() && legacySnap.data().kind==='invite') await deleteDoc(legacyRef)
     setClanMsg('❌ Miembro expulsado del clan.')
   }catch(error:any){console.error('Kick clan member error:',error);setClanMsg(`❌ No se pudo expulsar al miembro${error?.code?` (${error.code})`:''}.`)}
  }
@@ -1047,10 +1083,6 @@ useEffect(()=>{
       }
       await deleteDoc(ref)
     }
-    // Elimina cualquier invitación antigua del sistema anterior para que no genere estados falsos.
-    const legacyRef=doc(db,'clanJoinRequests',`${clan.id}_invite_${friend.id}`)
-    const legacySnap=await getDoc(legacyRef)
-    if(legacySnap.exists() && legacySnap.data().kind==='invite') await deleteDoc(legacyRef)
     const invite:ClanInvite={id:requestId,clanId:clan.id,senderId:user.uid,senderName:user.displayName||'Jugador',receiverId:friend.id,clanName:clan.name,clanTag:clan.tag||'',status:'pending',createdAt:serverTimestamp() as any}
     await setDoc(ref,{clanId:clan.id,senderId:user.uid,senderName:user.displayName||'Jugador',receiverId:friend.id,clanName:clan.name,clanTag:clan.tag||'',status:'pending',createdAt:serverTimestamp()})
     setClanInvitesSent(prev=>[...prev.filter(x=>x.id!==requestId),invite])
@@ -1099,7 +1131,7 @@ useEffect(()=>{
 
  if(!authReady)return <div className="auth-loading">⚡ AURA BATTLE<br/><small>Comprobando sesión…</small></div>
  if(!user)return <AuthScreen {...{authMode,setAuthMode,email,setEmail,password,setPassword,password2,setPassword2,name,setName,authMsg,setAuthMsg,handleAuth,resetPassword,resetSent,loginWithGoogle,lang,setLang,t}}/>
- return <div className={`app ${theme}`}><audio ref={battleMusicRef} src="/assets/audio/aura-battle-theme.wav" loop preload="auto" /><header className="topbar"><div className="brand">⚡ <span>Aura farming battles</span><b>V5.164.7</b></div><div className="top-actions"><span className="online-pill">● {online} {t.online}</span>{tab==='home'&&<div className="notification-wrap"><button type="button" className={`notification-btn${notificationOpen?' active':''}`} onClick={()=>setNotificationOpen(v=>!v)} aria-label="Notificaciones" title="Notificaciones">🔔{unreadFriendRequests.length+unreadPrivateMessages.length+battleInvites.length+unreadClanJoinRequests.length+unreadClanInvites.length>0&&<span className="notification-badge">{Math.min(99,unreadFriendRequests.length+unreadPrivateMessages.length+battleInvites.length+unreadClanJoinRequests.length+unreadClanInvites.length)}</span>}</button>{notificationOpen&&<div className="notification-panel"><div className="notification-title">🔔 Notificaciones</div>{battleInvites.length>0&&<div className="notification-messages"><div className="notification-subtitle">⚔️ Invitaciones de batalla</div>{battleInvites.slice(0,5).map(inv=><div className="notification-battle-invite" key={inv.id}><strong>{inv.senderName||'Jugador'} te invitó a una batalla</strong><div className="notification-battle-actions"><button type="button" className="primary" onClick={()=>void acceptBattleInvite(inv)}>⚔️ Aceptar</button><button type="button" onClick={()=>void declineBattleInvite(inv)}>Rechazar</button></div></div>)}</div>}{unreadFriendRequests.length>0&&<button type="button" className="notification-item" onClick={()=>{if(user)friendRequests.forEach(r=>localStorage.setItem(`auraFriendRequestRead:${user.uid}:${r.id}`,'1'));setUnreadFriendRequests([]);setNotificationOpen(false);navigateTab('friends')}}><strong>👥 {unreadFriendRequests.length} solicitud{unreadFriendRequests.length===1?'':'es'} de amistad</strong><small>Tienes nuevas solicitudes para revisar.</small></button>}{unreadPrivateMessages.length>0&&<div className="notification-messages"><div className="notification-subtitle">💬 Mensajes nuevos</div>{unreadPrivateMessages.slice(0,5).map(m=>{const f=friends.find(x=>x.id===m.uid);return <button type="button" className="notification-item" key={m.id} onClick={()=>f&&openPrivateChat(f)}><strong>{m.name||f?.name||'Jugador'}</strong><small>{m.text}</small></button>})}</div>}{unreadClanJoinRequests.length>0&&<div className="notification-messages"><div className="notification-subtitle">🛡️ Solicitudes de clan</div>{unreadClanJoinRequests.slice(0,5).map(r=><button type="button" className="notification-item clan-notification-item" key={r.id} onClick={()=>{localStorage.setItem(`auraClanJoinRead:${user.uid}:${r.id}`,'1');setUnreadClanJoinRequests(prev=>prev.filter(x=>x.id!==r.id));const c=clans.find(x=>x.id===r.clanId);if(c){setSelectedClan(c);setNotificationOpen(false);navigateTab('clans')}}}><strong>👥 {r.requesterName||'Jugador'} quiere unirse a tu clan</strong><small>{r.clanName||'Solicitud de ingreso'}</small></button>)}</div>}{unreadClanInvites.length>0&&<div className="notification-messages"><div className="notification-subtitle">📨 Invitaciones a clan</div>{unreadClanInvites.slice(0,5).map(r=><div className="notification-item clan-notification-item" key={r.id} onClick={()=>{localStorage.setItem(`auraClanInviteRead:${user.uid}:${r.id}`,'1')}}><strong>🛡️ {r.senderName||'Jugador'} te invitó a un clan</strong><small>{r.clanName||'Invitación de clan'}</small><div className="notification-battle-actions"><button type="button" className="primary" onClick={()=>void acceptClanInvite(r)}>Aceptar</button><button type="button" onClick={()=>void declineClanInvite(r)}>Rechazar</button></div></div>)}</div>}{unreadFriendRequests.length===0&&unreadPrivateMessages.length===0&&battleInvites.length===0&&unreadClanJoinRequests.length===0&&unreadClanInvites.length===0&&<div className="notification-empty">No tienes notificaciones nuevas.</div>}</div>}</div>}<select value={lang} onChange={e=>setLang(e.target.value as Lang)}><option value="es">ES</option><option value="en">EN</option><option value="pt">PT</option><option value="fr">FR</option><option value="de">DE</option><option value="it">IT</option><option value="tr">TR</option><option value="ja">JA</option><option value="ko">KO</option><option value="zh">中文</option></select><button onClick={logout}>{t.logout}</button></div></header>
+ return <div className={`app ${theme}`}><audio ref={battleMusicRef} src="/assets/audio/aura-battle-theme.wav" loop preload="auto" /><header className="topbar"><div className="brand">⚡ <span>Aura farming battles</span><b>V5.165</b></div><div className="top-actions"><span className="online-pill">● {online} {t.online}</span>{tab==='home'&&<div className="notification-wrap"><button type="button" className={`notification-btn${notificationOpen?' active':''}`} onClick={()=>setNotificationOpen(v=>!v)} aria-label="Notificaciones" title="Notificaciones">🔔{unreadFriendRequests.length+unreadPrivateMessages.length+battleInvites.length+unreadClanJoinRequests.length+unreadClanInvites.length>0&&<span className="notification-badge">{Math.min(99,unreadFriendRequests.length+unreadPrivateMessages.length+battleInvites.length+unreadClanJoinRequests.length+unreadClanInvites.length)}</span>}</button>{notificationOpen&&<div className="notification-panel"><div className="notification-title">🔔 Notificaciones</div>{battleInvites.length>0&&<div className="notification-messages"><div className="notification-subtitle">⚔️ Invitaciones de batalla</div>{battleInvites.slice(0,5).map(inv=><div className="notification-battle-invite" key={inv.id}><strong>{inv.senderName||'Jugador'} te invitó a una batalla</strong><div className="notification-battle-actions"><button type="button" className="primary" onClick={()=>void acceptBattleInvite(inv)}>⚔️ Aceptar</button><button type="button" onClick={()=>void declineBattleInvite(inv)}>Rechazar</button></div></div>)}</div>}{unreadFriendRequests.length>0&&<button type="button" className="notification-item" onClick={()=>{if(user)friendRequests.forEach(r=>localStorage.setItem(`auraFriendRequestRead:${user.uid}:${r.id}`,'1'));setUnreadFriendRequests([]);setNotificationOpen(false);navigateTab('friends')}}><strong>👥 {unreadFriendRequests.length} solicitud{unreadFriendRequests.length===1?'':'es'} de amistad</strong><small>Tienes nuevas solicitudes para revisar.</small></button>}{unreadPrivateMessages.length>0&&<div className="notification-messages"><div className="notification-subtitle">💬 Mensajes nuevos</div>{unreadPrivateMessages.slice(0,5).map(m=>{const f=friends.find(x=>x.id===m.uid);return <button type="button" className="notification-item" key={m.id} onClick={()=>f&&openPrivateChat(f)}><strong>{m.name||f?.name||'Jugador'}</strong><small>{m.text}</small></button>})}</div>}{unreadClanJoinRequests.length>0&&<div className="notification-messages"><div className="notification-subtitle">🛡️ Solicitudes de clan</div>{unreadClanJoinRequests.slice(0,5).map(r=><button type="button" className="notification-item clan-notification-item" key={r.id} onClick={()=>{localStorage.setItem(`auraClanJoinRead:${user.uid}:${r.id}`,'1');setUnreadClanJoinRequests(prev=>prev.filter(x=>x.id!==r.id));const c=clans.find(x=>x.id===r.clanId);if(c){setSelectedClan(c);setNotificationOpen(false);navigateTab('clans')}}}><strong>👥 {r.requesterName||'Jugador'} quiere unirse a tu clan</strong><small>{r.clanName||'Solicitud de ingreso'}</small></button>)}</div>}{unreadClanInvites.length>0&&<div className="notification-messages"><div className="notification-subtitle">📨 Invitaciones a clan</div>{unreadClanInvites.slice(0,5).map(r=><div className="notification-item clan-notification-item" key={r.id} onClick={()=>{localStorage.setItem(`auraClanInviteRead:${user.uid}:${r.id}`,'1')}}><strong>🛡️ {r.senderName||'Jugador'} te invitó a un clan</strong><small>{r.clanName||'Invitación de clan'}</small><div className="notification-battle-actions"><button type="button" className="primary" onClick={()=>void acceptClanInvite(r)}>Aceptar</button><button type="button" onClick={()=>void declineClanInvite(r)}>Rechazar</button></div></div>)}</div>}{unreadFriendRequests.length===0&&unreadPrivateMessages.length===0&&battleInvites.length===0&&unreadClanJoinRequests.length===0&&unreadClanInvites.length===0&&<div className="notification-empty">No tienes notificaciones nuevas.</div>}</div>}</div>}<select value={lang} onChange={e=>setLang(e.target.value as Lang)}><option value="es">ES</option><option value="en">EN</option><option value="pt">PT</option><option value="fr">FR</option><option value="de">DE</option><option value="it">IT</option><option value="tr">TR</option><option value="ja">JA</option><option value="ko">KO</option><option value="zh">中文</option></select><button onClick={logout}>{t.logout}</button></div></header>
  <div className="layout"><aside className="sidebar"><div className="mini-profile"><div className="profile-icon">⚡</div><div><strong>{user.displayName||'Jugador'}</strong><small>⚡ {profile.aura} Aura · Lv.{profile.level}</small></div></div>{nav.map(n=><button key={n} className={tab===n?'nav active':'nav'} onClick={()=>navigateTab(n)}>{icon(n)} {t[n]}</button>)}<div className="ad-slot side-ad">PUBLICIDAD<br/><small>Espacio para marcas</small></div></aside>
  <main className="content">
  {tab==='home'&&<section className="home-hero"><div className="hero-copy"><div className="eyebrow">⚡ ONLINE AURA ARENA</div><h1>{t.welcome}</h1><p>Compite en vivo, gana Aura y construye tu reputación.</p><div className="hero-actions"><button className="primary" onClick={()=>navigateTab('battle')}>⚔️ {t.play}</button><button onClick={()=>navigateTab('profile')}>👤 Mi perfil</button></div><div className="quick-stats"><Stat label="⚡ Tu Aura" value={profile.aura}/><Stat label="🏆 Victorias" value={profile.wins}/><Stat label="🔥 Nivel" value={profile.level}/></div></div><div className="hero-art"><img src="/assets/aura-arena-home.png" alt="AURA BATTLE Arena"/><div className="hero-glow">LIVE</div></div><div className="home-grid"><Card icon="⚔️" title="Batallas 1v1" text="Crea una sala y reta a otra persona con cámara." action={()=>navigateTab('battle')}/><Card icon="🤖" title="IA Aura" text="Convierte señales visuales de tu cámara en una métrica de Aura." action={()=>navigateTab('ai')}/><Card icon="🏆" title="Ranking global" text="Sube posiciones con tus victorias y puntuación." action={()=>navigateTab('ranking')}/><Card icon="🛡️" title="Clanes" text="Forma equipos y crea una comunidad alrededor de tu Aura." action={()=>navigateTab('clans')}/></div><div className="ad-slot banner-ad">ESPACIO PUBLICITARIO · AURA BATTLE</div></section>}
@@ -1119,7 +1151,7 @@ useEffect(()=>{
  {tab==='league'&&<Panel title="🥇 Liga"><div className="league-card"><div className="league-badge">⚡</div><h2>Bronce</h2><p>Gana batallas para subir a Plata, Oro y las divisiones superiores.</p><div className="progress"><span style={{width:`${Math.min(100,(profile.wins*10)%101)}%`}}/></div><small>{profile.wins*10} / 100 puntos de ascenso</small></div><div className="three-col"><Stat label="Temporada" value="01"/><Stat label="Victorias" value={profile.wins}/><Stat label="Nivel" value={profile.level}/></div></Panel>}
  {tab==='clans'&&<Panel title="🛡️ Clanes"><div className="clan-create"><div className="section-title">🏰 Crear mi clan</div><div className="clan-form-grid"><div className="clan-field"><label>Nombre del clan</label><input placeholder="Ej.: Guerreros del Aura" value={clanName} onChange={e=>{setClanName(e.target.value);setClanTag(buildClanTag(e.target.value));setClanMsg('')}}/></div><div className="clan-field"><label>Etiqueta automática <small>(se genera con el nombre)</small></label><input className="clan-tag-input" value={clanTag||buildClanTag(clanName)} readOnly aria-readonly="true"/><small className="clan-field-help">Se genera con el nombre y nunca se repite.</small></div><div className="clan-field clan-description-field"><label>Descripción del clan <small>(opcional)</small></label><textarea placeholder="Cuéntanos sobre tu clan…" maxLength={160} value={clanDescription} onChange={e=>setClanDescription(e.target.value)}/><small className="clan-counter">{clanDescription.length}/160</small></div><div className="clan-field clan-visibility-field"><label>Visibilidad</label><select value={clanVisibility} onChange={e=>setClanVisibility(e.target.value as 'public'|'private')}><option value="public">🌎 Público</option><option value="private">🔒 Privado</option></select></div></div><div className="clan-create-foot"><small>⚡ Crear clan cuesta <strong>100 Aura</strong>. {myClanId?'Ya perteneces a un clan.':''}</small><button className="primary" onClick={()=>void createClan()} disabled={!!myClanId}>＋ Crear clan</button></div></div>{clanMsg&&<div className="notice">{clanMsg}</div>}<div className="section-title">🔎 Buscar clanes</div><div className="inline clan-search"><input placeholder="Buscar por nombre o etiqueta" value={clanSearch} onChange={e=>setClanSearch(e.target.value)} onKeyDown={e=>e.key==='Escape'&&setClanSearch('')}/>{clanSearch.trim()&&<button type="button" onClick={()=>setClanSearch('')} aria-label="Limpiar búsqueda">✕</button>}</div>{clanSearch.trim()&&<small className="clan-search-status">{clanSearching?'🔎 Buscando en la comunidad…':`${filteredClans.length} clan${filteredClans.length===1?' encontrado':'es encontrados'}.`}</small>}<div className="section-title clan-community-title">Clanes de la comunidad</div><div className="clan-list">{filteredClans.length?filteredClans.map(c=><div className="clan-card clan-card-v163" key={c.id}><div><h3>{c.name}</h3><p className="clan-tag">[{c.tag||'CLAN'}] · {c.visibility==='private'?'🔒 Privado':'🌎 Público'}</p><p>{c.description||'Clan de la comunidad Aura farming battles.'}</p><small>👥 {c.members?.length||0} miembros</small></div><button type="button" className="secondary clan-view-btn" onClick={()=>{setSelectedClan(c);setClanMsg('')}}>Ver clan</button></div>):<div className="empty">No encontramos clanes con esa búsqueda.</div>}</div>{selectedClan&&<div className="clan-detail"><div className="clan-detail-head"><div><h2>[{selectedClan.tag||'CLAN'}] {selectedClan.name}</h2><p>{selectedClan.description||'Clan de la comunidad Aura farming battles.'}</p></div><button type="button" onClick={()=>setSelectedClan(null)}>✕</button></div><div className="clan-detail-meta"><span>👥 {selectedClan.members?.length||0} miembros</span><span>{selectedClan.visibility==='private'?'🔒 Privado':'🌎 Público'}</span><span>{selectedClan.owner===user?.uid?'👑 Líder':selectedClan.coLeader===user.uid?'🛡️ Co-líder':selectedClan.members?.includes(user.uid)?'⚔️ Miembro':'👤 Visitante'}</span></div>{selectedClan.members?.includes(user.uid)?<div className="clan-members"><h3>👥 Miembros</h3>{clanMembers.map(m=><div className="clan-member-row" key={m.id}><span>{m.id===selectedClan.owner?'👑':m.id===selectedClan.coLeader?'🛡️':'⚔️'} {m.name}</span><small>{m.id===selectedClan.owner?'Líder':m.id===selectedClan.coLeader?'Co-líder':'Miembro'} · ⚡ {m.aura}</small><div className="clan-member-actions">{selectedClanIsLeader&&m.id!==selectedClan.owner&&m.id!==user.uid&&<><button type="button" onClick={()=>void setClanCoLeader(selectedClan,selectedClan.coLeader===m.id?null:m.id)}>{selectedClan.coLeader===m.id?'Quitar Co-líder':'Nombrar Co-líder'}</button><button type="button" onClick={()=>{if(window.confirm(`¿Expulsar a ${m.name} del clan?`))void kickClanMember(selectedClan,m.id)}}>Expulsar</button><button type="button" onClick={()=>{if(window.confirm(`¿Transferir el liderazgo a ${m.name}? Tú quedarás como Co-líder.`))void transferClanLeadership(selectedClan,m.id)}}>Transferir liderazgo</button></>}</div></div>)}{selectedClanIsAdmin&&<div className="clan-admin-invite"><h3>➕ Invitar amigos al clan</h3>{friends.filter(f=>!selectedClan.members?.includes(f.id)).length?friends.filter(f=>!selectedClan.members?.includes(f.id)).map(f=>{const sent=clanInvitesSent.some(r=>r.clanId===selectedClan.id&&r.receiverId===f.id&&r.status==='pending');const sending=clanInvitingFriendId===f.id;return <div className="clan-invite-row" key={f.id}><span>👤 {f.name}</span><button type="button" className={sent?'clan-invite-sent':''} disabled={sent||sending} onClick={()=>void inviteFriendToClan(selectedClan,f)}>{sending?'⏳ Enviando…':sent?'📨 Enviada':'➕ Invitar'}</button></div>}):<small>No tienes amigos disponibles para invitar.</small>}</div>}{selectedClan.owner===user.uid?<div className="clan-leader-warning">👑 Eres el Líder. Para salir debes transferir primero el liderazgo.</div>:<button type="button" className="clan-leave-btn" onClick={()=>void leaveClan(selectedClan)}>🚪 Salir del clan</button>}</div>:<div className="clan-join-box">{pendingRequestForSelected?<div className="notice">⏳ Solicitud pendiente. El liderazgo debe aprobarla.</div>:<button type="button" className="primary" onClick={()=>void requestToJoinClan(selectedClan)} disabled={!!myClanId}>➕ Solicitar unirme al clan</button>}{myClanId&&<small>Ya perteneces a otro clan.</small>}</div>}{selectedClanIsAdmin&&<div className="clan-admin-requests"><h3>📨 Solicitudes de ingreso</h3>{clanJoinRequests.length?clanJoinRequests.map(r=><div className="clan-request-row" key={r.id}><div><strong>{r.requesterName||'Jugador'}</strong><small>Quiere unirse a tu clan.</small></div><div className="clan-request-actions"><button type="button" className="primary" onClick={()=>void approveClanRequest(r)}>Aceptar</button><button type="button" onClick={()=>void rejectClanRequest(r)}>Rechazar</button></div></div>):<div className="empty">No hay solicitudes pendientes.</div>}</div>}</div>}</Panel>}
  {tab==='premium'&&<Panel title="💎 Premium"><div className="premium-box"><div className="premium-icon">💎</div><h2>AURA BATTLE Premium</h2><p>Beneficios previstos: cosméticos exclusivos, estadísticas avanzadas, insignias y experiencia sin publicidad.</p><div className="premium-list"><span>✓ Efectos y beneficios exclusivos</span><span>✓ Estadísticas avanzadas</span><span>✓ Insignia Premium</span><span>✓ Sin publicidad</span></div><button className="primary" onClick={()=>setPremium(v=>!v)}>{premium?'✓ Premium demo activado':'Ver beneficios'}</button></div><div className="notice">Los pagos reales todavía no están activados. Antes de cobrar, conectaremos un proveedor de pagos y políticas legales.</div></Panel>}
- {tab==='settings'&&<Panel title="⚙️ Ajustes"><div className="settings-row"><span>Idioma</span><select value={lang} onChange={e=>setLang(e.target.value as Lang)}><option value="es">Español</option><option value="en">English</option><option value="pt">Português</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="it">Italiano</option><option value="tr">Türkçe</option><option value="ja">日本語</option><option value="ko">한국어</option><option value="zh">中文</option></select></div><div className="settings-row"><span>Tema</span><select value={theme} onChange={e=>setTheme(e.target.value as any)}><option value="neon">Neon</option><option value="midnight">Midnight</option></select></div><div className="settings-row"><span>Cuenta</span><button onClick={logout}>Cerrar sesión</button></div><div className="settings-row"><span>Seguridad</span><small>Firebase Authentication activo</small></div><div className="notice">Protege tu contraseña y no compartas códigos privados de salas fuera de la plataforma.</div></Panel>}
+ {tab==='settings'&&<Panel title="⚙️ Ajustes"><div className="settings-row"><span>Idioma</span><select value={lang} onChange={e=>setLang(e.target.value as Lang)}><option value="es">Español</option><option value="en">English</option><option value="pt">Português</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="it">Italiano</option><option value="tr">Türkçe</option><option value="ja">日本語</option><option value="ko">한국어</option><option value="zh">中文</option></select></div><div className="settings-row"><span>Tema</span><select value={theme} onChange={e=>setTheme(e.target.value as any)}><option value="neon">Neon</option><option value="midnight">Midnight</option></select></div><div className="settings-row"><span>Cuenta</span><button onClick={logout}>Cerrar sesión</button></div><div className="settings-row"><span>🔔 Notificaciones</span><div className="settings-notification-control"><small>{pushStatus==='enabled'?'Activadas en este dispositivo':pushStatus==='denied'?'Permiso rechazado':pushStatus==='loading'?'Activando…':'Recibir avisos de batallas, chats, amigos y clanes.'}</small>{pushStatus!=='enabled'&&<button className="primary" onClick={()=>void enablePushNotifications()}>🔔 Activar notificaciones</button>}</div></div><div className="settings-row"><span>Seguridad</span><small>Firebase Authentication activo</small></div><div className="notice">Las notificaciones push usan Firebase Cloud Messaging. En Android, el permiso del sistema debe estar permitido.</div><div className="notice">Protege tu contraseña y no compartas códigos privados de salas fuera de la plataforma.</div></Panel>}
  <div className="mobile-bottom-nav">
    {(['home','battle','friends','profile'] as Tab[]).map(n=><button key={n} className={tab===n?'active':''} onClick={()=>{navigateTab(n);setMobileMore(false)}}><span>{icon(n)}</span><small>{t[n]}</small></button>)}
    <button className={mobileMore?'active':''} onClick={()=>setMobileMore(v=>!v)}><span>☰</span><small>Más</small></button>
@@ -1133,7 +1165,7 @@ function AuthScreen(p:any){
   return (
     <div className="auth-shell">
       <div className="auth-brand">
-        <div className="brand">⚡ <span>Aura farming battles</span><b>V5.164.7</b></div>
+        <div className="brand">⚡ <span>Aura farming battles</span><b>V5.165</b></div>
         <p>La arena donde tu Aura habla por ti.</p>
       </div>
 

@@ -69,3 +69,13 @@ La detección automática de contenido es una medida de seguridad y puede equivo
 ### V5.164.3 — Corrección visual de administración de clanes
 - Eliminado el botón duplicado “Expulsar” en la tarjeta de miembros.
 - La acción de expulsar aparece una sola vez para quien tenga permiso.
+
+## v5.165 — Firebase Cloud Messaging preparado
+- Añadido soporte web para Firebase Cloud Messaging (FCM).
+- Service worker `public/firebase-messaging-sw.js` para notificaciones en segundo plano.
+- Registro del dispositivo en `users/{uid}.fcmTokens`.
+- Botón manual en Ajustes para pedir permiso y activar notificaciones.
+- Recepción de mensajes FCM en primer plano.
+- Variable `VITE_FIREBASE_VAPID_KEY` en `.env.example`.
+
+Nota: para Web Push en producción se debe generar/configurar la clave pública VAPID del proyecto Firebase. Esta versión prepara el cliente FCM; la integración nativa de FCM del APK Android es un paso separado.
