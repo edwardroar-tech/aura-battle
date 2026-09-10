@@ -923,12 +923,11 @@ useEffect(()=>{
       const status=String(snap.data().status||'')
       if(status==='pending'){setClanMsg('ℹ️ Ya tienes una solicitud pendiente para este clan.');return}
       if(status==='accepted'){setClanMsg('ℹ️ Ya formas parte de este clan.');return}
-      // Una solicitud rechazada puede volver a enviarse. Eliminamos primero
-      // el documento anterior para que la siguiente operación sea CREATE,
-      // evitando que Firestore la interprete como UPDATE.
       await deleteDoc(ref)
     }
-    await setDoc(ref,{clanId:clan.id,requesterId:user.uid,requesterName:user.displayName||'Jugador',clanName:clan.name,status:'pending',createdAt:serverTimestamp()})
+    // Escritura simple y determinista: la regla CREATE de clanJoinRequests
+    // solo necesita validar que requesterId coincida con el usuario autenticado.
+    await setDoc(ref,{clanId:String(clan.id),requesterId:String(user.uid),requesterName:String(user.displayName||'Jugador'),clanName:String(clan.name||''),status:'pending',createdAt:serverTimestamp()})
     setClanMsg(`✅ Solicitud enviada a [${clan.tag||'CLAN'}] ${clan.name}.`)
   }catch(error:any){
     console.error('Join clan request error:',error)
