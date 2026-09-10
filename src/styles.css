@@ -524,3 +524,45 @@ button,input,select{border-radius:14px}
   .clan-create-foot{flex-direction:column!important;align-items:stretch!important}
   .clan-create-foot button{width:100%!important}
 }
+
+/* v5.163 — Miembros y solicitudes de ingreso */
+.clan-list{display:grid;gap:12px}
+.clan-card-v163{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:0!important}
+.clan-card-v163>div{min-width:0}
+.clan-view-btn{flex:0 0 auto;min-width:92px}
+.clan-detail{margin-top:18px;padding:18px;border:1px solid rgba(126,102,255,.28);border-radius:20px;background:linear-gradient(135deg,rgba(126,102,255,.10),rgba(7,10,22,.78));box-shadow:0 12px 30px rgba(0,0,0,.18)}
+.clan-detail-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.clan-detail-head h2{margin:0 0 7px;font-size:clamp(20px,5vw,30px)}
+.clan-detail-head p{margin:0;color:#aeb5ca;line-height:1.45}
+.clan-detail-head>button{width:38px;height:38px;flex:0 0 38px;border-radius:12px;padding:0}
+.clan-detail-meta{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.clan-detail-meta span{padding:7px 10px;border-radius:999px;background:rgba(255,255,255,.05);color:#bfc6df;font-size:13px}
+.clan-members,.clan-admin-requests{margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.08)}
+.clan-members h3,.clan-admin-requests h3{margin:0 0 10px}
+.clan-member-row,.clan-request-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;margin-top:8px;border-radius:14px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.06)}
+.clan-member-row span{font-weight:800;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.clan-member-row small{color:#8f98b1;white-space:nowrap}
+.clan-request-row>div:first-child{display:flex;flex-direction:column;gap:3px;min-width:0}
+.clan-request-row strong{overflow:hidden;text-overflow:ellipsis}
+.clan-request-row small{color:#858da6}
+.clan-request-actions{display:flex;gap:7px;flex:0 0 auto}
+.clan-request-actions button{padding:8px 11px}
+.clan-join-box{margin-top:16px}
+.clan-join-box>.primary{width:100%;min-height:48px}
+.clan-join-box>small{display:block;margin-top:8px;color:#858da6;text-align:center}
+.clan-leave-btn{width:100%;margin-top:14px;border:1px solid rgba(255,90,110,.35);background:rgba(255,90,110,.08);color:#ffabb6}
+.clan-community-title{margin-top:24px}
+@media(max-width:700px){
+  .clan-card-v163{align-items:stretch;flex-direction:column;gap:12px}
+  .clan-view-btn{width:100%}
+  .clan-request-row{align-items:stretch;flex-direction:column}
+  .clan-request-actions{width:100%}
+  .clan-request-actions button{flex:1}
+  .clan-member-row{align-items:flex-start;flex-direction:column;gap:4px}
+}
+
+/* v5.163.1 — Buscador real de Clanes */
+.clan-search{max-width:700px;display:flex!important;gap:8px;align-items:center}
+.clan-search input{flex:1;min-width:0}
+.clan-search button{min-height:48px;min-width:48px;padding:0 12px}
+.clan-search-status{display:block;margin-top:7px;color:#8f98b1}

@@ -81,6 +81,44 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /clanJoinRequests/{requestId} {
+      allow read: if signedIn()
+        && (
+          resource.data.requesterId == request.auth.uid
+          || get(/databases/$(database)/documents/clans/$(resource.data.clanId)).data.owner == request.auth.uid
+        );
+
+      allow create: if signedIn()
+        && request.resource.data.requesterId == request.auth.uid
+        && request.resource.data.clanId is string
+        && request.resource.data.clanName is string
+        && request.resource.data.requesterName is string
+        && request.resource.data.status == 'pending';
+
+      allow update: if signedIn()
+        && (
+          (
+            get(/databases/$(database)/documents/clans/$(resource.data.clanId)).data.owner == request.auth.uid
+            && request.resource.data.clanId == resource.data.clanId
+            && request.resource.data.requesterId == resource.data.requesterId
+            && request.resource.data.status in ['accepted','rejected']
+          )
+          || (
+            resource.data.requesterId == request.auth.uid
+            && resource.data.status == 'rejected'
+            && request.resource.data.clanId == resource.data.clanId
+            && request.resource.data.requesterId == request.auth.uid
+            && request.resource.data.status == 'pending'
+          )
+        );
+
+      allow delete: if signedIn()
+        && (
+          resource.data.requesterId == request.auth.uid
+          || get(/databases/$(database)/documents/clans/$(resource.data.clanId)).data.owner == request.auth.uid
+        );
+    }
+
     match /clans/{clanId} {
       allow read: if signedIn();
       allow create: if signedIn() && request.resource.data.owner == request.auth.uid

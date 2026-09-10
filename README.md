@@ -29,16 +29,25 @@ La detección automática de contenido es una medida de seguridad y puede equivo
 - 👁️ Al abrir un chat privado, sus mensajes pendientes se marcan como vistos en ese dispositivo.
 
 
-### v5.162.1
+### v5.163.1.1
 - Botón «⚔️ Invitar a batalla» dentro del chat privado de amigos.
 - El invitado recibe la invitación en Notificaciones.
 - Al aceptar, entra directamente a la sala sin introducir código.
 
 
-## v5.162.1 — Creación y búsqueda de Clanes
+## v5.163.1.1 — Creación y búsqueda de Clanes
 - Nueva base visual y funcional de Clanes.
 - Crear clan con nombre, etiqueta, descripción, emblema y privacidad.
 - Crear clan cuesta 100 Aura.
 - Buscar y filtrar clanes por nombre/etiqueta.
 - Un usuario no puede crear otro clan mientras pertenezca a uno.
 - No incluye todavía solicitudes de ingreso, roles, chat ni desafíos; se reservan para versiones posteriores.
+
+### v5.163.1.1 — Miembros y solicitudes de ingreso
+- Vista detallada de cada clan.
+- Lista de miembros con Líder/Miembro.
+- Botón “Solicitar unirme al clan”.
+- Solicitudes únicas por jugador y clan.
+- El Líder puede aceptar o rechazar solicitudes.
+- Un miembro puede salir del clan.
+- El Líder no puede salir todavía; la transferencia de liderazgo llegará en v5.164.
