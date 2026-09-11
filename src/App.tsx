@@ -850,7 +850,7 @@ useEffect(()=>{
        const track=s.getVideoTracks()[0]
        const caps=(track?.getCapabilities?.()||{}) as any
        if(track && typeof caps.zoom==='object' && typeof caps.zoom.min==='number'){
-         const target=Math.max(caps.zoom.min, Math.min(caps.zoom.max ?? caps.zoom.min, caps.zoom.min + ((caps.zoom.max ?? caps.zoom.min)-caps.zoom.min)*0.15))
+         const target=caps.zoom.min
          await track.applyConstraints({advanced:[{zoom:target}]} as any)
        }
      }catch(zoomError){
