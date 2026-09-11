@@ -1206,21 +1206,23 @@ useEffect(()=>{
   if(!user)return
   try{
     const clanRef=doc(db,'clans',r.clanId); const reqRef=doc(db,'clanJoinRequests',r.id)
-    const clanSnap=await getDoc(clanRef)
-    if(!clanSnap.exists()){setClanMsg('⚠️ El clan ya no está disponible.');return}
-    const clan=clanSnap.data()
     if(myClanId&&myClanId!==r.clanId){setClanMsg('⚠️ Ya perteneces a otro clan.');return}
+    let acceptedClan: any = null
     await runTransaction(db,async tx=>{
-      const freshClan=await tx.get(clanRef); const reqSnap=await tx.get(reqRef)
-      if(!freshClan.exists()||!reqSnap.exists())throw new Error('invite-missing')
-      const data=freshClan.data(); const req=reqSnap.data()
-      if(req.receiverId!==user.uid||req.status!=='pending')throw new Error('not-allowed')
-      const members=Array.isArray(data.members)?[...data.members]:[]
-      if(!members.includes(user.uid))members.push(user.uid)
-      tx.update(clanRef,{members}); tx.update(reqRef,{status:'accepted',reviewedAt:serverTimestamp()})
+      const reqSnap=await tx.get(reqRef); const clanSnap=await tx.get(clanRef)
+      if(!reqSnap.exists()||!clanSnap.exists())throw new Error('invite-missing')
+      const req=reqSnap.data(); const data=clanSnap.data()
+      if(req.clanId!==r.clanId||req.kind!=='invite'||req.receiverId!==user.uid||req.requesterId===user.uid||req.status!=='pending')throw new Error('invite-not-pending')
+      const members=Array.isArray(data.members)?data.members:[]
+      if(members.length>=1000&&!members.includes(user.uid))throw new Error('clan-full')
+      if(!members.includes(user.uid))tx.update(clanRef,{members:arrayUnion(user.uid)})
+      tx.update(reqRef,{status:'accepted',reviewedAt:serverTimestamp()})
+      acceptedClan={...data,id:r.clanId}
     })
-    setUnreadClanInvites(prev=>prev.filter(x=>x.id!==r.id)); localStorage.setItem(`auraClanInviteRead:${user.uid}:${r.id}`,'1'); setClanMsg(`✅ Te uniste a [${String(clan.tag||r.clanTag||'CLAN')}] ${String(clan.name||r.clanName||'Clan')}.`)
-  }catch(error:any){console.error('Accept clan invite error:',error);setClanMsg(`❌ No se pudo aceptar la invitación${error?.code?` (${error.code})`:''}.`)}
+    setMyClanId(r.clanId)
+    setSelectedClan(acceptedClan||selectedClan)
+    setUnreadClanInvites(prev=>prev.filter(x=>x.id!==r.id)); setClanInvitesSent(prev=>prev.filter(x=>x.id!==r.id)); localStorage.setItem(`auraClanInviteRead:${user.uid}:${r.id}`,'1'); setClanMsg(`✅ Te uniste a [${String(acceptedClan?.tag||r.clanTag||'CLAN')}] ${String(acceptedClan?.name||r.clanName||'Clan')}.`)
+  }catch(error:any){console.error('Accept clan invite error:',error);const code=error?.code||error?.message||'';setClanMsg(`❌ No se pudo aceptar la invitación${code?` (${code})`:''}.`)}
  }
  async function declineClanInvite(r:ClanInvite){
   if(!user)return
