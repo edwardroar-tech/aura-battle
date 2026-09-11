@@ -11,7 +11,7 @@ type Lang = 'es'|'en'|'pt'|'fr'|'de'|'it'|'tr'|'ja'|'ko'|'zh'
 type Tab = 'home'|'profile'|'friends'|'chat'|'battle'|'ai'|'ranking'|'league'|'clans'|'premium'|'settings'
 
 type Friend = {id:string; name:string; aura:number}
-type FriendRequest = {id:string; senderId:string; senderName:string; senderAura:number; receiverId:string; createdAt?:any}
+type FriendRequest = {id:string; senderId:string; senderName:string; senderAura:number; receiverId:string; status:'pending'|'accepted'|'rejected'; createdAt?:any}
 type BattleInvite = {id:string; senderId:string; senderName:string; receiverId:string; roomCode:string; status:'pending'|'accepted'|'declined'; createdAt?:any}
 type ChatMsg = {id:string; uid:string; name:string; text:string; conversationId?:string; participants?:string[]; createdAt?:any; type?:'message'|'battleInvite'; roomCode?:string; receiverId?:string; status?:'pending'|'accepted'|'declined'}
 type Clan = {id:string; name:string; owner:string; members:string[]; tag?:string; description?:string; visibility?:'public'|'private'; coLeader?:string; createdAt?:any}
