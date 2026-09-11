@@ -119,7 +119,27 @@ service cloud.firestore {
     }
 
     match /clanInvites/{inviteId} {
-      allow read, create, update, delete: if signedIn();
+      allow read: if signedIn() && (
+        resource.data.senderId == request.auth.uid ||
+        resource.data.receiverId == request.auth.uid
+      );
+
+      allow create: if signedIn() &&
+        request.resource.data.senderId == request.auth.uid &&
+        request.resource.data.receiverId is string &&
+        request.resource.data.receiverId != request.auth.uid &&
+        request.resource.data.kind == 'invite' &&
+        request.resource.data.status == 'pending';
+
+      allow update: if signedIn() && (
+        resource.data.receiverId == request.auth.uid ||
+        resource.data.senderId == request.auth.uid
+      );
+
+      allow delete: if signedIn() && (
+        resource.data.senderId == request.auth.uid ||
+        resource.data.receiverId == request.auth.uid
+      );
     }
 
     // ==========================================
