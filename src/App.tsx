@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode, RefObject } from 'react'
 import { FilesetResolver, PoseLandmarker } from '@mediapipe/tasks-vision'
 import { auth, db } from './lib/firebase'
+import { enableWebPush, listenForegroundMessages } from './lib/notifications'
 import { socket } from './lib/socket'
 import { createUserWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword, signInWithRedirect, signInWithPopup, getRedirectResult, GoogleAuthProvider, signOut, updateProfile, setPersistence, browserLocalPersistence } from 'firebase/auth'
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, arrayUnion, arrayRemove, where, writeBatch, increment, runTransaction } from 'firebase/firestore'
@@ -17,6 +18,7 @@ type Clan = {id:string; name:string; owner:string; members:string[]; tag?:string
 type ClanJoinRequest = {id:string; clanId:string; requesterId:string; requesterName:string; receiverId?:string; clanName?:string; kind?:'join'|'invite'; status:'pending'|'accepted'|'rejected'; createdAt?:any}
 type ClanInvite = {id:string; clanId:string; senderId:string; senderName:string; receiverId:string; clanName?:string; clanTag?:string; status:'pending'|'accepted'|'declined'; createdAt?:any}
 type ClanMember = {id:string; name:string; aura:number}
+type ClanChatMsg = {id:string; clanId:string; uid:string; name:string; text:string; createdAt?:any}
 
 declare global {
   interface Window { nsfwjs?: any; }
@@ -39,13 +41,14 @@ const nav:Tab[]=['home','profile','friends','chat','battle','ai','ranking','leag
 
 export default function App(){
  const [user,setUser]=useState(auth.currentUser); const [authReady,setAuthReady]=useState(false); const [authMode,setAuthMode]=useState<'choice'|'login'|'register'>('choice'); const [lang,setLang]=useState<Lang>('es')
- const [email,setEmail]=useState(''); const [password,setPassword]=useState(''); const [password2,setPassword2]=useState(''); const [name,setName]=useState(''); const [authMsg,setAuthMsg]=useState('')
- const [tab,setTab]=useState<Tab>('home'); const [profile,setProfile]=useState({aura:0,wins:0,losses:0,level:1})
+ const [email,setEmail]=useState(''); const [password,setPassword]=useState(''); const [password2,setPassword2]=useState(''); const [name,setName]=useState(''); const [authMsg,setAuthMsg]=useState(''); const [legalAccepted,setLegalAccepted]=useState(false); const [legalDoc,setLegalDoc]=useState<null|'reglamento'|'terminos'|'privacidad'>(null)
+ const [tab,setTab]=useState<Tab>('home'); const [profile,setProfile]=useState({aura:0,wins:0,losses:0,draws:0,battles:0,auraEarned:0,currentStreak:0,bestStreak:0,level:1})
  const [friendSearch,setFriendSearch]=useState(''); const [friends,setFriends]=useState<Friend[]>([]); const [friendResults,setFriendResults]=useState<Friend[]>([]); const [friendMsg,setFriendMsg]=useState(''); const [friendSearching,setFriendSearching]=useState(false); const [friendRequests,setFriendRequests]=useState<FriendRequest[]>([]); const [unreadFriendRequests,setUnreadFriendRequests]=useState<FriendRequest[]>([]); const [battleInvites,setBattleInvites]=useState<BattleInvite[]>([]); const [notificationOpen,setNotificationOpen]=useState(false); const [unreadPrivateMessages,setUnreadPrivateMessages]=useState<ChatMsg[]>([])
  const [chat,setChat]=useState<ChatMsg[]>([]); const [chatInput,setChatInput]=useState(''); const [chatLoading,setChatLoading]=useState(false); const [chatMsg,setChatMsg]=useState(''); const [privateFriend,setPrivateFriend]=useState<Friend|null>(null); const [privateChat,setPrivateChat]=useState<ChatMsg[]>([]); const [privateInput,setPrivateInput]=useState(''); const [privateLoading,setPrivateLoading]=useState(false); const [privateMsg,setPrivateMsg]=useState('')
- const [firebaseDiag,setFirebaseDiag]=useState(''); const [firebaseDiagBusy,setFirebaseDiagBusy]=useState(false); const [leaders,setLeaders]=useState<Friend[]>([]); const [clans,setClans]=useState<Clan[]>([]); const [unreadClanJoinRequests,setUnreadClanJoinRequests]=useState<ClanJoinRequest[]>([]); const [clanSearch,setClanSearch]=useState(''); const [clanSearchResults,setClanSearchResults]=useState<Clan[]|null>(null); const [clanSearching,setClanSearching]=useState(false); const [clanName,setClanName]=useState(''); const [clanTag,setClanTag]=useState(''); const [clanDescription,setClanDescription]=useState(''); const [clanVisibility,setClanVisibility]=useState<'public'|'private'>('public'); const [myClanId,setMyClanId]=useState<string|null>(null); const [clanMsg,setClanMsg]=useState(''); const [selectedClan,setSelectedClan]=useState<Clan|null>(null); const [clanMembers,setClanMembers]=useState<ClanMember[]>([]); const [clanJoinRequests,setClanJoinRequests]=useState<ClanJoinRequest[]>([]); const [myClanRequests,setMyClanRequests]=useState<ClanJoinRequest[]>([]); const [clanInvitesSent,setClanInvitesSent]=useState<ClanInvite[]>([]); const [unreadClanInvites,setUnreadClanInvites]=useState<ClanInvite[]>([]); const [clanInvitingFriendId,setClanInvitingFriendId]=useState<string|null>(null)
+ const [clanChat,setClanChat]=useState<ClanChatMsg[]>([]); const [clanChatInput,setClanChatInput]=useState(''); const [clanChatLoading,setClanChatLoading]=useState(false); const [clanChatMsg,setClanChatMsg]=useState(''); const [unreadClanChatCount,setUnreadClanChatCount]=useState(0);
+ const [firebaseDiag,setFirebaseDiag]=useState(''); const [firebaseDiagBusy,setFirebaseDiagBusy]=useState(false); const [pushStatus,setPushStatus]=useState(''); const [pushBusy,setPushBusy]=useState(false); const pushUnsubRef=useRef<null|(()=>void)>(null); const [leaders,setLeaders]=useState<Friend[]>([]); const [myRank,setMyRank]=useState<number|null>(null); const [publicProfile,setPublicProfile]=useState<Friend|null>(null); const [clans,setClans]=useState<Clan[]>([]); const [unreadClanJoinRequests,setUnreadClanJoinRequests]=useState<ClanJoinRequest[]>([]); const [clanSearch,setClanSearch]=useState(''); const [clanSearchResults,setClanSearchResults]=useState<Clan[]|null>(null); const [clanSearching,setClanSearching]=useState(false); const [clanName,setClanName]=useState(''); const [clanTag,setClanTag]=useState(''); const [clanDescription,setClanDescription]=useState(''); const [clanVisibility,setClanVisibility]=useState<'public'|'private'>('public'); const [myClanId,setMyClanId]=useState<string|null>(null); const [clanMsg,setClanMsg]=useState(''); const [selectedClan,setSelectedClan]=useState<Clan|null>(null); const [clanMembers,setClanMembers]=useState<ClanMember[]>([]); const [clanJoinRequests,setClanJoinRequests]=useState<ClanJoinRequest[]>([]); const [myClanRequests,setMyClanRequests]=useState<ClanJoinRequest[]>([]); const [clanInvitesSent,setClanInvitesSent]=useState<ClanInvite[]>([]); const [unreadClanInvites,setUnreadClanInvites]=useState<ClanInvite[]>([]); const [clanInvitingFriendId,setClanInvitingFriendId]=useState<string|null>(null)
  const [premium,setPremium]=useState(false); const [musicOn,setMusicOn]=useState(true); const [mobileMore,setMobileMore]=useState(false); const [resetSent,setResetSent]=useState(false); const [theme,setTheme]=useState<'neon'|'midnight'>('neon')
- const [poseReady,setPoseReady]=useState(false); const [trainingActive,setTrainingActive]=useState(false); const [trainingSeconds,setTrainingSeconds]=useState(0); const [trainingDone,setTrainingDone]=useState(false); const [safetyReady,setSafetyReady]=useState(false); const [battleReady,setBattleReady]=useState(false); const [opponentReady,setOpponentReady]=useState(false); const [detectedMove,setDetectedMove]=useState('Esperando movimiento…'); const [moveBonus,setMoveBonus]=useState(0); const [room,setRoom]=useState(''); const [roomCode,setRoomCode]=useState(''); const [roomStatus,setRoomStatus]=useState('Listo.'); const [opponentJoined,setOpponentJoined]=useState(false); const [bothCamerasReady,setBothCamerasReady]=useState(false); const [host,setHost]=useState(false); const [cameraOn,setCameraOn]=useState(false); const [battleStarted,setBattleStarted]=useState(false); const [battleSeconds,setBattleSeconds]=useState(0); const [aura,setAura]=useState(0); const [opponentAura,setOpponentAura]=useState(0); const [online,setOnline]=useState(0); const [battleResult,setBattleResult]=useState<{outcome:'win'|'loss'|'draw';localScore:number;rivalScore:number;delta:number}|null>(null)
+ const [poseReady,setPoseReady]=useState(false); const [trainingActive,setTrainingActive]=useState(false); const [trainingSeconds,setTrainingSeconds]=useState(0); const [trainingDone,setTrainingDone]=useState(false); const [safetyReady,setSafetyReady]=useState(false); const [battleReady,setBattleReady]=useState(false); const [opponentReady,setOpponentReady]=useState(false); const [detectedMove,setDetectedMove]=useState('Esperando movimiento…'); const [moveBonus,setMoveBonus]=useState(0); const [room,setRoom]=useState(''); const [roomCode,setRoomCode]=useState(''); const [roomStatus,setRoomStatus]=useState('Listo.'); const [opponentJoined,setOpponentJoined]=useState(false); const [bothCamerasReady,setBothCamerasReady]=useState(false); const [host,setHost]=useState(false); const [cameraOn,setCameraOn]=useState(false); const [battleStarted,setBattleStarted]=useState(false); const [battleSeconds,setBattleSeconds]=useState(0); const [aura,setAura]=useState(0); const [opponentAura,setOpponentAura]=useState(0); const [battleCountdown,setBattleCountdown]=useState(0); const [online,setOnline]=useState(0); const [battleResult,setBattleResult]=useState<{outcome:'win'|'loss'|'draw';localScore:number;rivalScore:number;delta:number}|null>(null)
  const privateChatEndRef=useRef<HTMLDivElement|null>(null); const privateInputRef=useRef<HTMLInputElement|null>(null); const safetyModelRef=useRef<any>(null); const safetyLoadingRef=useRef(false); const safetyScanAtRef=useRef(0); const speechRecognitionRef=useRef<any>(null); const safetyViolationRef=useRef(false); const hostRef=useRef(false); const battleResultHandledRef=useRef(false); const poseHistoryRef=useRef<{x:number;y:number;z:number;visibility:number}[][]>([]); const patternScoreRef=useRef(0); const lastMoveBonusRef=useRef(0); const lastMoveAtRef=useRef(0); const cameraSourceRef=useRef<'ai'|'battle'|null>(null); const videoRef=useRef<HTMLVideoElement>(null); const aiVideoRef=useRef<HTMLVideoElement>(null); const battleMusicRef=useRef<HTMLAudioElement>(null); const remoteVideoRef=useRef<HTMLVideoElement>(null); const localStreamRef=useRef<MediaStream|null>(null); const peerRef=useRef<RTCPeerConnection|null>(null); const pendingIceRef=useRef<RTCIceCandidateInit[]>([]); const canvasRef=useRef<HTMLCanvasElement|null>(null); const poseLandmarkerRef=useRef<PoseLandmarker|null>(null); const poseLoadingRef=useRef(false); const previousPoseRef=useRef<{x:number;y:number;z:number;visibility:number}[]|null>(null); const movementScoreRef=useRef(0); const poseFrameCountRef=useRef(0); const poseVisibleFrameCountRef=useRef(0); const lastPoseTimeRef=useRef(0)
  const t=copy[lang]
 
@@ -94,14 +97,14 @@ export default function App(){
          const snap=await getDoc(doc(db,'users',u.uid))
          if(snap.exists()){
            const d=snap.data()
-           setProfile({aura:Number(d.aura||0),wins:Number(d.victorias||0),losses:Number(d.derrotas||0),level:Number(d.level||1)})
+           setProfile({aura:Number(d.aura||0),wins:Number(d.victorias||0),losses:Number(d.derrotas||0),draws:Number(d.empates||0),battles:Number(d.batallas||0),auraEarned:Number(d.auraGanada||0),currentStreak:Number(d.rachaActual||0),bestStreak:Number(d.mejorRacha||0),level:Number(d.level||1)})
            const ids=Array.isArray(d.friends)?d.friends:[]
            const profiles=await Promise.all(ids.map(async(id:string)=>{
              try{const fs=await getDoc(doc(db,'users',id));if(!fs.exists())return null;const x=fs.data();return{id,name:String(x.nombre||x.name||x.displayName||'Jugador'),aura:Number(x.aura||0)} as Friend}catch{return null}
            }))
            setFriends(profiles.filter(Boolean) as Friend[])
          }else{
-           await setDoc(doc(db,'users',u.uid),{uid:u.uid,nombre:u.displayName||'Jugador',nombreLower:(u.displayName||'Jugador').toLowerCase(),email:u.email||'',aura:0,victorias:0,derrotas:0,level:1,friends:[],createdAt:serverTimestamp()},{merge:true})
+           await setDoc(doc(db,'users',u.uid),{uid:u.uid,nombre:u.displayName||'Jugador',nombreLower:(u.displayName||'Jugador').toLowerCase(),email:u.email||'',aura:0,victorias:0,derrotas:0,empates:0,batallas:0,auraGanada:0,rachaActual:0,mejorRacha:0,level:1,friends:[],createdAt:serverTimestamp()},{merge:true})
            setFriends([])
          }
        }catch(error){console.error('Auth profile bootstrap error:',error)}
@@ -175,13 +178,65 @@ useEffect(()=>{
   },e=>{console.error('Friendships load error:',e);setFriends([])})
  },[user])
 
+async function sendPushEvent(targetUid:string,event:string,refId:string){
+  if(!user||!targetUid||targetUid===user.uid)return
+  try{
+    const idToken=await user.getIdToken()
+    await fetch('/api/push/notify',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${idToken}`},body:JSON.stringify({event,targetUid,refId})})
+  }catch(error){console.warn('Push event delivery skipped:',error)}
+}
+
+async function enableNotifications(){
+  if(!user)return
+  setPushBusy(true); setPushStatus('')
+  try{
+    const result=await enableWebPush()
+    const tokenId=await hashToken(result.token)
+    await setDoc(doc(db,'users',user.uid,'pushTokens',tokenId),{token:result.token,platform:'web',updatedAt:serverTimestamp()},{merge:true})
+    setPushStatus('🔔 Notificaciones activadas en este dispositivo.')
+    try{
+      const idToken=await user.getIdToken()
+      await fetch('/api/push/register-check',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${idToken}`},body:JSON.stringify({token:result.token})})
+    }catch{}
+  }catch(error:any){
+    const code=String(error?.message||'push-error')
+    const messages:Record<string,string>={
+      'notifications-not-supported':'⚠️ Este dispositivo/navegador no admite notificaciones web.',
+      'service-worker-not-supported':'⚠️ Este navegador no admite Service Worker.',
+      'https-required':'⚠️ Las notificaciones requieren HTTPS.',
+      'fcm-not-supported':'⚠️ FCM Web no está disponible en este entorno. En un APK WebView necesitaremos la integración nativa de Android.',
+      'notification-permission-denied':'⚠️ Bloqueaste el permiso de notificaciones en Android. Actívalo desde los permisos del navegador/app.',
+      'notification-permission-default':'ℹ️ No se concedió el permiso de notificaciones.',
+      'fcm-token-empty':'⚠️ Firebase no pudo registrar este dispositivo.'
+    }
+    setPushStatus(messages[code]||`⚠️ No se pudieron activar las notificaciones (${code}).`)
+  }finally{setPushBusy(false)}
+}
+
+async function hashToken(token:string){
+  const data=new TextEncoder().encode(token)
+  const digest=await crypto.subtle.digest('SHA-256',data)
+  return Array.from(new Uint8Array(digest)).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,40)
+}
+
+useEffect(()=>{
+  pushUnsubRef.current?.(); pushUnsubRef.current=null
+  if(!user)return
+  if(typeof Notification==='undefined'||Notification.permission!=='granted')return
+  void listenForegroundMessages(payload=>{
+    const n=payload.notification||{}
+    setPushStatus(`🔔 ${n.title||'Nueva notificación'}: ${n.body||'Tienes una nueva notificación.'}`)
+  }).then(unsub=>{pushUnsubRef.current=unsub}).catch(()=>{})
+  return()=>{pushUnsubRef.current?.();pushUnsubRef.current=null}
+},[user])
+
 useEffect(()=>{ if(!user)return; setChatLoading(true); setChatMsg(''); const q=query(collection(db,'chat'),orderBy('createdAt','desc'),limit(60)); return onSnapshot(q,s=>{setChat(s.docs.map(d=>({id:d.id,...d.data()} as ChatMsg)).reverse());setChatLoading(false)},e=>{console.error('Global chat load error:',e);setChatLoading(false);setChatMsg('⚠️ No se pudo cargar el chat global.')}) },[user])
- useEffect(()=>{ if(!user)return; const q=query(collection(db,'users'),orderBy('aura','desc'),limit(25)); return onSnapshot(q,s=>setLeaders(s.docs.map(d=>{const x=d.data(); return {id:d.id,name:x.nombre||'Jugador',aura:Number(x.aura||0)}}))) },[user])
+ useEffect(()=>{ if(!user)return; const q=query(collection(db,'users'),orderBy('aura','desc'),limit(100)); return onSnapshot(q,s=>{const rows=s.docs.map(d=>{const x=d.data();return{id:d.id,name:String(x.nombre||x.name||x.displayName||'Jugador'),aura:Number(x.aura||0)}});setLeaders(rows.slice(0,25));const idx=rows.findIndex(x=>x.id===user.uid);setMyRank(idx>=0?idx+1:null)}) },[user])
  useEffect(()=>{ if(!user){setClans([]);setMyClanId(null);setSelectedClan(null);return} const q=query(collection(db,'clans'),orderBy('createdAt','desc'),limit(50)); return onSnapshot(q,s=>{ const rows=s.docs.map(d=>({id:d.id,...d.data()} as Clan)); setClans(rows); const mine=rows.find(c=>Array.isArray(c.members)&&c.members.includes(user.uid)); setMyClanId(mine?.id||null); setSelectedClan(prev=>prev?rows.find(c=>c.id===prev.id)||null:prev) },e=>{console.error('Clans load error:',e);setClans([])}) },[user])
  useEffect(()=>{ if(!user){setClanSearchResults(null);setClanSearching(false);return} const term=clanSearch.trim().toLowerCase(); if(!term){setClanSearchResults(null);setClanSearching(false);return} const timer=setTimeout(async()=>{setClanSearching(true); try{ const end=term+'\uf8ff'; const [nameSnap,tagSnap]=await Promise.all([getDocs(query(collection(db,'clans'),where('nameLower','>=',term),where('nameLower','<=',end),limit(50))),getDocs(query(collection(db,'clans'),where('tagLower','>=',term),where('tagLower','<=',end),limit(50)))]); const merged=new Map<string,Clan>(); [...nameSnap.docs,...tagSnap.docs].forEach(d=>merged.set(d.id,{id:d.id,...d.data()} as Clan)); const local=clans.filter(c=>`${c.name||''} ${c.tag||''}`.toLowerCase().includes(term)); local.forEach(c=>merged.set(c.id,c)); setClanSearchResults([...merged.values()].sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')))); }catch(error){console.error('Clan search error:',error); const fallback=clans.filter(c=>`${c.name||''} ${c.tag||''}`.toLowerCase().includes(term)); setClanSearchResults(fallback); } finally{setClanSearching(false)} },250); return()=>clearTimeout(timer) },[user,clanSearch,clans])
  useEffect(()=>{ if(!user){setMyClanRequests([]);return} const q=query(collection(db,'clanJoinRequests'),where('requesterId','==',user.uid),limit(50)); return onSnapshot(q,s=>{setMyClanRequests(s.docs.map(d=>({id:d.id,...d.data()} as ClanJoinRequest)))},e=>{console.error('Clan request load error:',e);setMyClanRequests([])}) },[user])
- useEffect(()=>{ if(!user){setClanInvitesSent([]);return} const q=query(collection(db,'clanInvites'),where('senderId','==',user.uid),limit(100)); return onSnapshot(q,s=>setClanInvitesSent(s.docs.map(d=>({id:d.id,...d.data()} as ClanInvite)).filter(r=>r.status==='pending')),e=>{console.error('Clan sent invite load error:',e);setClanInvitesSent([])}) },[user])
- useEffect(()=>{ if(!user){setUnreadClanInvites([]);return} const q=query(collection(db,'clanInvites'),where('receiverId','==',user.uid),limit(50)); return onSnapshot(q,s=>{const rows=s.docs.map(d=>({id:d.id,...d.data()} as ClanInvite)).filter(r=>r.status==='pending'); rows.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)); const unread=rows.filter(r=>localStorage.getItem(`auraClanInviteRead:${user.uid}:${r.id}`)!=='1'); setUnreadClanInvites(unread)},e=>{console.error('Clan invite notification load error:',e);setUnreadClanInvites([])}) },[user])
+ useEffect(()=>{ if(!user){setClanInvitesSent([]);return} const q=query(collection(db,'clanJoinRequests'),where('requesterId','==',user.uid),limit(100)); return onSnapshot(q,s=>setClanInvitesSent(s.docs.map(d=>({id:d.id,...d.data(),senderId:(d.data() as any).requesterId} as ClanInvite)).filter(r=>r.status==='pending'&&r.kind==='invite')),e=>{console.error('Clan sent invite load error:',e);setClanInvitesSent([])}) },[user])
+ useEffect(()=>{ if(!user){setUnreadClanInvites([]);return} const q=query(collection(db,'clanJoinRequests'),where('receiverId','==',user.uid),limit(50)); return onSnapshot(q,s=>{const rows=s.docs.map(d=>({id:d.id,...d.data(),senderId:(d.data() as any).requesterId} as ClanInvite)).filter(r=>r.status==='pending'&&r.kind==='invite'); rows.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)); const unread=rows.filter(r=>localStorage.getItem(`auraClanInviteRead:${user.uid}:${r.id}`)!=='1'); setUnreadClanInvites(unread)},e=>{console.error('Clan invite notification load error:',e);setUnreadClanInvites([])}) },[user])
  useEffect(()=>{
   if(!user){setUnreadClanJoinRequests([]);return}
   let requestUnsub=()=>{}
@@ -207,6 +262,41 @@ useEffect(()=>{ if(!user)return; setChatLoading(true); setChatMsg(''); const q=q
   return()=>{unsubOwner();unsubCo();requestUnsub()}
  },[user])
  useEffect(()=>{ if(!user||!selectedClan){setClanJoinRequests([]);setClanMembers([]);return} let cancelled=false; const loadMembers=async()=>{const ids=Array.isArray(selectedClan.members)?selectedClan.members:[]; const profiles=await Promise.all(ids.map(async id=>{try{const fs=await getDoc(doc(db,'users',id));if(!fs.exists())return{id,name:id===selectedClan.owner?'Líder':'Jugador',aura:0};const x=fs.data();return{id,name:String(x.nombre||x.name||x.displayName||'Jugador'),aura:Number(x.aura||0)}}catch{return{id,name:id===selectedClan.owner?'Líder':'Jugador',aura:0}}})); if(!cancelled)setClanMembers(profiles)}; void loadMembers(); const q=query(collection(db,'clanJoinRequests'),where('clanId','==',selectedClan.id),limit(100)); const unsub=onSnapshot(q,s=>{const rows=s.docs.map(d=>({id:d.id,...d.data()} as ClanJoinRequest)).filter(r=>r.status==='pending'&&r.kind!=='invite'); setClanJoinRequests(rows)},e=>{console.error('Clan join requests load error:',e);setClanJoinRequests([])}); return()=>{cancelled=true;unsub()} },[user,selectedClan?.id,selectedClan?.members?.join(',')])
+
+useEffect(()=>{
+  if(!user||!selectedClan||!selectedClan.members?.includes(user.uid)){
+    setClanChat([]); setClanChatInput(''); setClanChatMsg(''); setUnreadClanChatCount(0); return
+  }
+  setClanChatLoading(true); setClanChatMsg('')
+  const q=query(collection(db,'clanChats'),where('clanId','==',selectedClan.id),limit(200))
+  return onSnapshot(q,s=>{
+    const rows=s.docs.map(d=>({id:d.id,...d.data()} as ClanChatMsg))
+    rows.sort((a,b)=>{const ta=a.createdAt?.toMillis?.()||((a.createdAt?.seconds||0)*1000);const tb=b.createdAt?.toMillis?.()||((b.createdAt?.seconds||0)*1000);return ta-tb})
+    setClanChat(rows); setClanChatLoading(false)
+    const readAt=Number(localStorage.getItem(`auraClanChatRead:${user.uid}:${selectedClan.id}`)||0)
+    setUnreadClanChatCount(rows.filter(m=>m.uid!==user.uid&&((m.createdAt?.toMillis?.()||((m.createdAt?.seconds||0)*1000))>readAt)).length)
+  },e=>{console.error('Clan chat load error:',e);setClanChat([]);setClanChatLoading(false);setClanChatMsg(`⚠️ No se pudo cargar el chat del clan${e?.code?` (${e.code})`:''}.`)})
+},[user,selectedClan?.id,selectedClan?.members?.join(',')])
+
+useEffect(()=>{
+  if(!user||!selectedClan||!selectedClan.members?.includes(user.uid)||!clanChat.length)return
+  const latest=clanChat[clanChat.length-1]
+  const latestMs=latest?.createdAt?.toMillis?.()||((latest?.createdAt?.seconds||0)*1000)
+  if(latestMs) localStorage.setItem(`auraClanChatRead:${user.uid}:${selectedClan.id}`,String(latestMs))
+  setUnreadClanChatCount(0)
+},[user,selectedClan?.id,clanChat])
+
+async function sendClanChat(e:FormEvent){
+  e.preventDefault(); const text=clanChatInput.trim()
+  if(!text||!user||!selectedClan||!selectedClan.members?.includes(user.uid))return
+  setClanChatMsg(''); setClanChatInput('')
+  try{
+    const clanMessageRef=await addDoc(collection(db,'clanChats'),{clanId:selectedClan.id,uid:user.uid,name:user.displayName||'Jugador',text,createdAt:serverTimestamp()})
+    void Promise.all((selectedClan.members||[]).filter(id=>id!==user.uid).map(id=>sendPushEvent(id,'clan_chat',clanMessageRef.id)))
+  }catch(error:any){
+    console.error('Clan chat send error:',error); setClanChatInput(text); setClanChatMsg(`⚠️ No se pudo enviar el mensaje al clan${error?.code?` (${error.code})`:''}.`)
+  }
+}
  useEffect(()=>{socket.on('online-count',(n:number)=>setOnline(n)); return()=>{socket.off('online-count')}},[])
  useEffect(()=>{
   socket.on('peer-joined',()=>{setOpponentJoined(true);setOpponentReady(false);setBattleReady(false);setRoomStatus('Rival conectado. Activen ambas cámaras para comenzar.')})
@@ -230,11 +320,19 @@ useEffect(()=>{ if(!user)return; setChatLoading(true); setChatMsg(''); const q=q
       }
     }
   })
+  socket.on('battle-countdown',({startsAt}:{startsAt:number})=>{
+    setBattleCountdown(Math.max(0,Math.ceil((startsAt-Date.now())/1000)))
+    setBattleStarted(false)
+    setBattleSeconds(0)
+    setBattleResult(null)
+    setRoomStatus('⏱️ ¡Prepárense! La batalla comienza en 5 segundos…')
+  })
   socket.on('start',({endsAt}:{endsAt:number})=>{
     battleResultHandledRef.current=false
     setBattleResult(null)
     setBattleReady(false)
     setOpponentReady(false)
+    setBattleCountdown(0)
     setBattleStarted(true)
     setRoomStatus('🔥 ¡BATALLA DE AURA EN CURSO!')
     setBattleSeconds(Math.max(0,Math.ceil((endsAt-Date.now())/1000)))
@@ -290,24 +388,38 @@ useEffect(()=>{ if(!user)return; setChatLoading(true); setChatMsg(''); const q=q
         const currentAura=Number(current.aura||0)
         const currentWins=Number(current.victorias||0)
         const currentLosses=Number(current.derrotas||0)
+        const currentDraws=Number(current.empates||0)
+        const currentBattles=Number(current.batallas||0)
+        const currentEarned=Number(current.auraGanada||0)
+        const currentStreak=Number(current.rachaActual||0)
+        const currentBest=Number(current.mejorRacha||0)
         const nextAura=Math.max(0,currentAura+delta)
         const nextWins=currentWins+(outcome==='win'?1:0)
         const nextLosses=currentLosses+(outcome==='loss'?1:0)
+        const nextDraws=currentDraws+(outcome==='draw'?1:0)
+        const nextBattles=currentBattles+1
+        const nextStreak=outcome==='win'?currentStreak+1:0
+        const nextBest=Math.max(currentBest,nextStreak)
+        const nextEarned=currentEarned+delta
         const nextLevel=Math.min(100,Math.max(1,Math.floor(nextAura/100)+1))
-        await setDoc(ref,{aura:nextAura,victorias:nextWins,derrotas:nextLosses,level:nextLevel},{merge:true})
-        setProfile({aura:nextAura,wins:nextWins,losses:nextLosses,level:nextLevel})
+        await setDoc(ref,{aura:nextAura,victorias:nextWins,derrotas:nextLosses,empates:nextDraws,batallas:nextBattles,auraGanada:nextEarned,rachaActual:nextStreak,mejorRacha:nextBest,level:nextLevel},{merge:true})
+        setProfile({aura:nextAura,wins:nextWins,losses:nextLosses,draws:nextDraws,battles:nextBattles,auraEarned:nextEarned,currentStreak:nextStreak,bestStreak:nextBest,level:nextLevel})
       }catch(e){console.error('Battle result save error:',e);setRoomStatus('⚠️ La batalla terminó, pero no pudimos guardar el resultado.')}
     }
 
   })
   socket.on('opponent-aura',(v:number)=>setOpponentAura(Math.round(v)))
+  socket.on('battle-cancelled',({reason}:{reason:string})=>{
+    setBattleCountdown(0);setBattleStarted(false);setBattleReady(false);setOpponentReady(false)
+    setRoomStatus(`⚠️ ${reason||'La batalla fue cancelada.'}`)
+  })
   socket.on('content-violation',({reason}:{reason:string})=>{
     safetyViolationRef.current=true
     if(localStreamRef.current){localStreamRef.current.getTracks().forEach(t=>t.stop());localStreamRef.current=null}
     if(videoRef.current)videoRef.current.srcObject=null
     if(remoteVideoRef.current)remoteVideoRef.current.srcObject=null
     peerRef.current?.close();peerRef.current=null
-    setCameraOn(false);setBattleStarted(false);setBattleReady(false);setBothCamerasReady(false);setOpponentReady(false)
+    setCameraOn(false);setBattleStarted(false);setBattleCountdown(0);setBattleReady(false);setBothCamerasReady(false);setOpponentReady(false)
     setRoomStatus(`🚨 Batalla cancelada: ${reason||'contenido no permitido detectado.'}`)
   })
   socket.on('peer-left',()=>{setOpponentJoined(false);setBothCamerasReady(false);setBattleReady(false);setOpponentReady(false);setBattleStarted(false);setRoomStatus('El rival salió de la sala.')})
@@ -332,7 +444,7 @@ useEffect(()=>{ if(!user)return; setChatLoading(true); setChatMsg(''); const q=q
       }
     }catch(e){console.warn('WebRTC signal error',e)}
   })
-  return()=>{['peer-joined','peer-camera-ready','battle-ready-status','both-cameras-ready','start','battle-ended','opponent-aura','peer-left','content-violation','signal'].forEach(x=>socket.off(x))}
+  return()=>{['peer-joined','peer-camera-ready','battle-ready-status','both-cameras-ready','start','battle-ended','opponent-aura','peer-left','content-violation','signal','battle-cancelled'].forEach(x=>socket.off(x))}
  },[])
  useEffect(()=>{
   const audio=battleMusicRef.current;
@@ -367,6 +479,12 @@ useEffect(()=>{
   const timer=window.setInterval(()=>setBattleSeconds(v=>Math.max(0,v-1)),1000)
   return()=>clearInterval(timer)
 },[battleStarted])
+
+useEffect(()=>{
+  if(battleCountdown<=0)return
+  const timer=window.setInterval(()=>setBattleCountdown(v=>Math.max(0,v-1)),1000)
+  return()=>clearInterval(timer)
+},[battleCountdown])
 
 useEffect(()=>{
   let cancelled=false
@@ -519,8 +637,9 @@ useEffect(()=>{
       const current=snap.exists()?snap.data():{}
       const nextAura=Number(current.aura||0)+1
       const nextLevel=Math.min(100,Math.max(1,Math.floor(nextAura/100)+1))
-      await setDoc(ref,{aura:nextAura,level:nextLevel},{merge:true})
-      setProfile(prev=>({...prev,aura:nextAura,level:nextLevel}))
+      const nextEarned=Number(current.auraGanada||0)+1
+      await setDoc(ref,{aura:nextAura,auraGanada:nextEarned,level:nextLevel},{merge:true})
+      setProfile(prev=>({...prev,aura:nextAura,auraEarned:nextEarned,level:nextLevel}))
     }catch(e){console.error('Training reward save error:',e);setRoomStatus('⚠️ El entrenamiento terminó, pero no pudimos guardar +1 Aura.')}
   })()
 },[trainingActive,trainingSeconds,user])
@@ -548,7 +667,7 @@ useEffect(()=>{
           if(videoRef.current)videoRef.current.srcObject=null
           if(remoteVideoRef.current)remoteVideoRef.current.srcObject=null
           peerRef.current?.close();peerRef.current=null
-          setCameraOn(false);setBattleStarted(false);setBattleReady(false);setBothCamerasReady(false)
+          setCameraOn(false);setBattleStarted(false);setBattleCountdown(0);setBattleReady(false);setBothCamerasReady(false)
           return
         }
       }catch(e){console.warn('Safety scan error',e)}
@@ -577,7 +696,7 @@ useEffect(()=>{
       if(videoRef.current)videoRef.current.srcObject=null
       if(remoteVideoRef.current)remoteVideoRef.current.srcObject=null
       peerRef.current?.close();peerRef.current=null
-      setCameraOn(false);setBattleStarted(false);setBattleReady(false);setBothCamerasReady(false)
+      setCameraOn(false);setBattleStarted(false);setBattleCountdown(0);setBattleReady(false);setBothCamerasReady(false)
     }
   }
   recognition.onerror=()=>{}
@@ -587,7 +706,7 @@ useEffect(()=>{
   return()=>{try{recognition.onend=null;recognition.stop()}catch{}speechRecognitionRef.current=null}
 },[cameraOn,tab,battleStarted])
 
- async function handleAuth(e:FormEvent){e.preventDefault();setAuthMsg('');try{if(authMode==='register'){if(name.trim().length<2)return setAuthMsg('Escribe un nombre de jugador.');if(password!==password2)return setAuthMsg('Las contraseñas no coinciden.');if(password.length<6)return setAuthMsg('La contraseña debe tener al menos 6 caracteres.');const c=await createUserWithEmailAndPassword(auth,email,password);const clean=name.trim();await updateProfile(c.user,{displayName:clean});await setDoc(doc(db,'users',c.user.uid),{uid:c.user.uid,nombre:clean,nombreLower:clean.toLowerCase(),email,aura:0,victorias:0,derrotas:0,level:1,createdAt:serverTimestamp()},{merge:true})}else await signInWithEmailAndPassword(auth,email,password)}catch(e:any){setAuthMsg(e?.message?.replace('Firebase: Error (auth/','').replace(').','')||'No se pudo completar la operación.')}}
+ async function handleAuth(e:FormEvent){e.preventDefault();setAuthMsg('');try{if(authMode==='register'){if(!legalAccepted)return setAuthMsg('Debes aceptar el Reglamento Oficial, los Términos y Condiciones y la Política de Privacidad para crear tu cuenta.');if(name.trim().length<2)return setAuthMsg('Escribe un nombre de jugador.');if(password!==password2)return setAuthMsg('Las contraseñas no coinciden.');if(password.length<6)return setAuthMsg('La contraseña debe tener al menos 6 caracteres.');const c=await createUserWithEmailAndPassword(auth,email,password);const clean=name.trim();await updateProfile(c.user,{displayName:clean});await setDoc(doc(db,'users',c.user.uid),{uid:c.user.uid,nombre:clean,nombreLower:clean.toLowerCase(),email,aura:0,victorias:0,derrotas:0,level:1,legalAccepted:true,legalVersion:'1.0',legalAcceptedAt:serverTimestamp(),reglamentoVersion:'1.0',terminosVersion:'1.0',privacidadVersion:'1.0',createdAt:serverTimestamp()},{merge:true})}else await signInWithEmailAndPassword(auth,email,password)}catch(e:any){setAuthMsg(e?.message?.replace('Firebase: Error (auth/','').replace(').','')||'No se pudo completar la operación.')}}
  async function resetPassword(){if(!email.trim()){setAuthMsg('Escribe tu correo para recuperar la contraseña.');return}try{await sendPasswordResetEmail(auth,email.trim());setResetSent(true);setAuthMsg('Te enviamos un enlace para restablecer tu contraseña.')}catch(e:any){setAuthMsg('No pudimos enviar el enlace de recuperación. Revisa el correo.')}}
  async function loginWithGoogle(){
   setAuthMsg('')
@@ -615,7 +734,7 @@ useEffect(()=>{
    if(videoRef.current) videoRef.current.srcObject=null
    if(remoteVideoRef.current) remoteVideoRef.current.srcObject=null
    peerRef.current?.close();peerRef.current=null
-   setCameraOn(false);setBothCamerasReady(false);setPoseReady(false);setBattleReady(false);setOpponentReady(false);setBattleStarted(false);setBattleSeconds(0);setBattleResult(null);setTrainingActive(false);setTrainingSeconds(0);setTrainingDone(false);safetyViolationRef.current=false
+   setCameraOn(false);setBothCamerasReady(false);setPoseReady(false);setBattleReady(false);setOpponentReady(false);setBattleStarted(false);setBattleCountdown(0);setBattleSeconds(0);setBattleResult(null);setTrainingActive(false);setTrainingSeconds(0);setTrainingDone(false);safetyViolationRef.current=false
    battleResultHandledRef.current=false
    setRoomCode('');setRoom('');setOpponentJoined(false);setOpponentAura(0);setAura(0);movementScoreRef.current=0;previousPoseRef.current=null;poseFrameCountRef.current=0;poseVisibleFrameCountRef.current=0;setRoomStatus('Listo.')
    window.history.replaceState({auraTab:'home'},'',window.location.href)
@@ -623,7 +742,7 @@ useEffect(()=>{
  }
  async function finishBattle(){if(!user||!battleStarted)return;socket.emit('finish-battle');setRoomStatus('⏳ Finalizando la batalla…')}
  async function logout(){localStreamRef.current?.getTracks().forEach(x=>x.stop());peerRef.current?.close();await signOut(auth);socket.disconnect();navigateTab('home')}
- async function resetPeer(){pendingIceRef.current=[]; if(peerRef.current){peerRef.current.ontrack=null;peerRef.current.onicecandidate=null;peerRef.current.close();peerRef.current=null} setBothCamerasReady(false);setBattleStarted(false);setBattleSeconds(0);setOpponentAura(0)}
+ async function resetPeer(){pendingIceRef.current=[]; if(peerRef.current){peerRef.current.ontrack=null;peerRef.current.onicecandidate=null;peerRef.current.close();peerRef.current=null} setBothCamerasReady(false);setBattleStarted(false);setBattleCountdown(0);setBattleSeconds(0);setOpponentAura(0)}
  async function createRoom(){hostRef.current=true;await resetPeer();if(!socket.connected)socket.connect();socket.emit('create',(r:any)=>{if(r?.ok){setRoomCode(r.code);setHost(true);hostRef.current=true;setOpponentJoined(false);setRoomStatus('Esperando al rival…');navigateTab('battle')}})}
  function joinRoomCode(code:string){void resetPeer();if(!socket.connected)socket.connect();socket.emit('join',code.trim().toUpperCase(),(r:any)=>{if(r?.ok){setRoomCode(r.code);setRoom(r.code);setHost(false);hostRef.current=false;setOpponentJoined(true);setRoomStatus('Conectado a la sala. Activa tu cámara.');navigateTab('battle')}else setRoomStatus(r?.error||'No se pudo unir a la sala.')})}
  function joinRoom(){joinRoomCode(room)}
@@ -679,7 +798,7 @@ useEffect(()=>{
      if(!navigator.mediaDevices?.getUserMedia){setRoomStatus('Este navegador no permite usar la cámara. Abre AURA BATTLE con HTTPS en Chrome o Safari.');return}
      if(localStreamRef.current){cameraSourceRef.current=tab==='ai'?'ai':'battle';attachLocalStream(localStreamRef.current);setCameraOn(true);if(!socket.connected)socket.connect();socket.emit('camera-ready');return}
      setRoomStatus('Solicitando acceso a cámara y micrófono…')
-     const videoConstraints={facingMode:{ideal:'user'},width:{ideal:1280},height:{ideal:720},frameRate:{ideal:30,max:30}}
+     const videoConstraints={facingMode:{ideal:'user'},width:{ideal:720},height:{ideal:1280},frameRate:{ideal:30,max:30}}
      let s:MediaStream
      let micAvailable=true
      try{
@@ -771,6 +890,7 @@ useEffect(()=>{
       createdAt:serverTimestamp()
     },{merge:true})
     setFriendMsg(`📨 Solicitud enviada a ${f.name}.`)
+    void sendPushEvent(f.id,'friend_request',requestId)
   }catch(error:any){
     console.error('Friend request error:',error)
     setFriendMsg(`❌ No se pudo enviar la solicitud${error?.code?` (${error.code})`:''}.`)
@@ -867,7 +987,8 @@ useEffect(()=>{
   setPrivateInput('');
   window.setTimeout(()=>privateInputRef.current?.focus(),0);
   try{
-    await addDoc(collection(db,'privateChats'),{uid:user.uid,name:user.displayName||'Jugador',text,conversationId:conversationId(user.uid,privateFriend.id),participants:[user.uid,privateFriend.id],createdAt:serverTimestamp()})
+    const messageRef=await addDoc(collection(db,'privateChats'),{uid:user.uid,name:user.displayName||'Jugador',text,conversationId:conversationId(user.uid,privateFriend.id),participants:[user.uid,privateFriend.id],createdAt:serverTimestamp()})
+    void sendPushEvent(privateFriend.id,'private_message',messageRef.id)
     window.setTimeout(()=>privateInputRef.current?.focus(),30);
   }catch(error){
     console.error('Private chat send error:',error);
@@ -890,7 +1011,8 @@ useEffect(()=>{
       if(code.length!==6){setPrivateMsg('⚠️ El servidor devolvió un código de sala inválido.');return}
       setRoomCode(code);setRoom('');setHost(true);hostRef.current=true;setOpponentJoined(false);setRoomStatus(`⚔️ Invitación enviada a ${f.name}. Esperando que entre…`)
       try{
-        await addDoc(collection(db,'battleInvites'),{senderId:user.uid,senderName:user.displayName||'Jugador',receiverId:f.id,roomCode:code,status:'pending',createdAt:serverTimestamp()})
+        const battleInviteRef=await addDoc(collection(db,'battleInvites'),{senderId:user.uid,senderName:user.displayName||'Jugador',receiverId:f.id,roomCode:code,status:'pending',createdAt:serverTimestamp()})
+        void sendPushEvent(f.id,'battle_invite',battleInviteRef.id)
         setPrivateMsg(`⚔️ Invitación enviada a ${f.name}. Le llegará a sus notificaciones y podrá entrar directamente.`)
         navigateTab('battle')
       }catch(error:any){
@@ -997,6 +1119,7 @@ useEffect(()=>{
     // Escritura simple y determinista: la regla CREATE de clanJoinRequests
     // solo necesita validar que requesterId coincida con el usuario autenticado.
     await setDoc(ref,{clanId:String(clan.id),requesterId:String(user.uid),requesterName:String(user.displayName||'Jugador'),clanName:String(clan.name||''),status:'pending',createdAt:serverTimestamp()})
+    void Promise.all([clan.owner, clan.coLeader].filter((id): id is string=>!!id&&id!==user.uid).map(id=>sendPushEvent(id,'clan_join_request',requestId)))
     setClanMsg(`✅ Solicitud enviada a [${clan.tag||'CLAN'}] ${clan.name}.`)
   }catch(error:any){
     console.error('Join clan request error:',error)
@@ -1031,7 +1154,7 @@ useEffect(()=>{
     await updateDoc(doc(db,'clans',clan.id),updates)
     // Limpia una invitación pendiente antigua para que, si el jugador vuelve a ser invitado,
     // el botón no aparezca falsamente como "📨 Enviada".
-    const inviteRef=doc(db,'clanInvites',`${clan.id}_${memberId}`)
+    const inviteRef=doc(db,'clanJoinRequests',`${clan.id}_${memberId}`)
     const inviteSnap=await getDoc(inviteRef)
     if(inviteSnap.exists() && inviteSnap.data().status==='pending') await deleteDoc(inviteRef)
     setClanMsg('❌ Miembro expulsado del clan.')
@@ -1047,19 +1170,20 @@ useEffect(()=>{
   if(!admin||clan.members?.includes(friend.id)||friend.id===user.uid)return
   if(clanInvitingFriendId===friend.id)return
   setClanInvitingFriendId(friend.id)
-  const requestId=`${clan.id}_${friend.id}`; const ref=doc(db,'clanInvites',requestId)
+  const requestId=`${clan.id}_${friend.id}`; const ref=doc(db,'clanJoinRequests',requestId)
   try{
     const snap=await getDoc(ref)
     if(snap.exists()){
       const data=snap.data()
-      if(data.status==='pending'&&data.senderId===user.uid&&data.receiverId===friend.id){
+      if(data.status==='pending'&&data.kind==='invite'&&data.requesterId===user.uid&&data.receiverId===friend.id){
         setClanMsg(`ℹ️ Ya hay una invitación pendiente para ${friend.name}.`)
         return
       }
       await deleteDoc(ref)
     }
     const invite:ClanInvite={id:requestId,clanId:clan.id,senderId:user.uid,senderName:user.displayName||'Jugador',receiverId:friend.id,clanName:clan.name,clanTag:clan.tag||'',status:'pending',createdAt:serverTimestamp() as any}
-    await setDoc(ref,{clanId:clan.id,senderId:user.uid,senderName:user.displayName||'Jugador',receiverId:friend.id,clanName:clan.name,clanTag:clan.tag||'',status:'pending',createdAt:serverTimestamp()})
+    await setDoc(ref,{clanId:clan.id,requesterId:user.uid,requesterName:user.displayName||'Jugador',receiverId:friend.id,clanName:clan.name,kind:'invite',status:'pending',createdAt:serverTimestamp()})
+    void sendPushEvent(friend.id,'clan_invite',requestId)
     setClanInvitesSent(prev=>[...prev.filter(x=>x.id!==requestId),invite])
     setClanMsg(`📨 Invitación enviada a ${friend.name}.`)
   }catch(error:any){
@@ -1072,7 +1196,7 @@ useEffect(()=>{
  async function acceptClanInvite(r:ClanInvite){
   if(!user)return
   try{
-    const clanRef=doc(db,'clans',r.clanId); const reqRef=doc(db,'clanInvites',r.id)
+    const clanRef=doc(db,'clans',r.clanId); const reqRef=doc(db,'clanJoinRequests',r.id)
     const clanSnap=await getDoc(clanRef)
     if(!clanSnap.exists()){setClanMsg('⚠️ El clan ya no está disponible.');return}
     const clan=clanSnap.data()
@@ -1091,7 +1215,7 @@ useEffect(()=>{
  }
  async function declineClanInvite(r:ClanInvite){
   if(!user)return
-  try{await updateDoc(doc(db,'clanInvites',r.id),{status:'declined',reviewedAt:serverTimestamp()});setUnreadClanInvites(prev=>prev.filter(x=>x.id!==r.id));localStorage.setItem(`auraClanInviteRead:${user.uid}:${r.id}`,'1');setClanMsg('Invitación de clan rechazada.')}catch(error:any){console.error('Decline clan invite error:',error);setClanMsg(`❌ No se pudo rechazar la invitación${error?.code?` (${error.code})`:''}.`)}
+  try{await updateDoc(doc(db,'clanJoinRequests',r.id),{status:'rejected',reviewedAt:serverTimestamp()});setUnreadClanInvites(prev=>prev.filter(x=>x.id!==r.id));localStorage.setItem(`auraClanInviteRead:${user.uid}:${r.id}`,'1');setClanMsg('Invitación de clan rechazada.')}catch(error:any){console.error('Decline clan invite error:',error);setClanMsg(`❌ No se pudo rechazar la invitación${error?.code?` (${error.code})`:''}.`)}
  }
  async function leaveClan(clan:Clan){
   if(!user)return
@@ -1105,12 +1229,12 @@ useEffect(()=>{
  const filteredClans=clanSearch.trim()? (clanSearchResults||[]) : clans
 
  if(!authReady)return <div className="auth-loading">⚡ AURA BATTLE<br/><small>Comprobando sesión…</small></div>
- if(!user)return <AuthScreen {...{authMode,setAuthMode,email,setEmail,password,setPassword,password2,setPassword2,name,setName,authMsg,setAuthMsg,handleAuth,resetPassword,resetSent,loginWithGoogle,lang,setLang,t}}/>
- return <div className={`app ${theme}`}><audio ref={battleMusicRef} src="/assets/audio/aura-battle-theme.wav" loop preload="auto" /><header className="topbar"><div className="brand">⚡ <span>Aura farming battles</span><b>V5.167</b></div><div className="top-actions"><span className="online-pill">● {online} {t.online}</span>{tab==='home'&&<div className="notification-wrap"><button type="button" className={`notification-btn${notificationOpen?' active':''}`} onClick={()=>setNotificationOpen(v=>!v)} aria-label="Notificaciones" title="Notificaciones">🔔{unreadFriendRequests.length+unreadPrivateMessages.length+battleInvites.length+unreadClanJoinRequests.length+unreadClanInvites.length>0&&<span className="notification-badge">{Math.min(99,unreadFriendRequests.length+unreadPrivateMessages.length+battleInvites.length+unreadClanJoinRequests.length+unreadClanInvites.length)}</span>}</button>{notificationOpen&&<div className="notification-panel"><div className="notification-title">🔔 Notificaciones</div>{battleInvites.length>0&&<div className="notification-messages"><div className="notification-subtitle">⚔️ Invitaciones de batalla</div>{battleInvites.slice(0,5).map(inv=><div className="notification-battle-invite" key={inv.id}><strong>{inv.senderName||'Jugador'} te invitó a una batalla</strong><div className="notification-battle-actions"><button type="button" className="primary" onClick={()=>void acceptBattleInvite(inv)}>⚔️ Aceptar</button><button type="button" onClick={()=>void declineBattleInvite(inv)}>Rechazar</button></div></div>)}</div>}{unreadFriendRequests.length>0&&<button type="button" className="notification-item" onClick={()=>{if(user)friendRequests.forEach(r=>localStorage.setItem(`auraFriendRequestRead:${user.uid}:${r.id}`,'1'));setUnreadFriendRequests([]);setNotificationOpen(false);navigateTab('friends')}}><strong>👥 {unreadFriendRequests.length} solicitud{unreadFriendRequests.length===1?'':'es'} de amistad</strong><small>Tienes nuevas solicitudes para revisar.</small></button>}{unreadPrivateMessages.length>0&&<div className="notification-messages"><div className="notification-subtitle">💬 Mensajes nuevos</div>{unreadPrivateMessages.slice(0,5).map(m=>{const f=friends.find(x=>x.id===m.uid);return <button type="button" className="notification-item" key={m.id} onClick={()=>f&&openPrivateChat(f)}><strong>{m.name||f?.name||'Jugador'}</strong><small>{m.text}</small></button>})}</div>}{unreadClanJoinRequests.length>0&&<div className="notification-messages"><div className="notification-subtitle">🛡️ Solicitudes de clan</div>{unreadClanJoinRequests.slice(0,5).map(r=><button type="button" className="notification-item clan-notification-item" key={r.id} onClick={()=>{localStorage.setItem(`auraClanJoinRead:${user.uid}:${r.id}`,'1');setUnreadClanJoinRequests(prev=>prev.filter(x=>x.id!==r.id));const c=clans.find(x=>x.id===r.clanId);if(c){setSelectedClan(c);setNotificationOpen(false);navigateTab('clans')}}}><strong>👥 {r.requesterName||'Jugador'} quiere unirse a tu clan</strong><small>{r.clanName||'Solicitud de ingreso'}</small></button>)}</div>}{unreadClanInvites.length>0&&<div className="notification-messages"><div className="notification-subtitle">📨 Invitaciones a clan</div>{unreadClanInvites.slice(0,5).map(r=><div className="notification-item clan-notification-item" key={r.id} onClick={()=>{localStorage.setItem(`auraClanInviteRead:${user.uid}:${r.id}`,'1')}}><strong>🛡️ {r.senderName||'Jugador'} te invitó a un clan</strong><small>{r.clanName||'Invitación de clan'}</small><div className="notification-battle-actions"><button type="button" className="primary" onClick={()=>void acceptClanInvite(r)}>Aceptar</button><button type="button" onClick={()=>void declineClanInvite(r)}>Rechazar</button></div></div>)}</div>}{unreadFriendRequests.length===0&&unreadPrivateMessages.length===0&&battleInvites.length===0&&unreadClanJoinRequests.length===0&&unreadClanInvites.length===0&&<div className="notification-empty">No tienes notificaciones nuevas.</div>}</div>}</div>}<select value={lang} onChange={e=>setLang(e.target.value as Lang)}><option value="es">ES</option><option value="en">EN</option><option value="pt">PT</option><option value="fr">FR</option><option value="de">DE</option><option value="it">IT</option><option value="tr">TR</option><option value="ja">JA</option><option value="ko">KO</option><option value="zh">中文</option></select><button onClick={logout}>{t.logout}</button></div></header>
+ if(!user)return <AuthScreen {...{authMode,setAuthMode,email,setEmail,password,setPassword,password2,setPassword2,name,setName,authMsg,setAuthMsg,handleAuth,resetPassword,resetSent,loginWithGoogle,lang,setLang,t,legalAccepted,setLegalAccepted,legalDoc,setLegalDoc}}/>
+ return <div className={`app ${theme}`}><audio ref={battleMusicRef} src="/assets/audio/aura-battle-theme.wav" loop preload="auto" /><header className="topbar"><div className="brand">⚡ <span>Aura farming battles</span><b>V5.174</b></div><div className="top-actions"><span className="online-pill">● {online} {t.online}</span>{tab==='home'&&<div className="notification-wrap"><button type="button" className={`notification-btn${notificationOpen?' active':''}`} onClick={()=>setNotificationOpen(v=>!v)} aria-label="Notificaciones" title="Notificaciones">🔔{unreadFriendRequests.length+unreadPrivateMessages.length+battleInvites.length+unreadClanJoinRequests.length+unreadClanInvites.length>0&&<span className="notification-badge">{Math.min(99,unreadFriendRequests.length+unreadPrivateMessages.length+battleInvites.length+unreadClanJoinRequests.length+unreadClanInvites.length)}</span>}</button>{notificationOpen&&<div className="notification-panel"><div className="notification-title">🔔 Notificaciones</div>{battleInvites.length>0&&<div className="notification-messages"><div className="notification-subtitle">⚔️ Invitaciones de batalla</div>{battleInvites.slice(0,5).map(inv=><div className="notification-battle-invite" key={inv.id}><strong>{inv.senderName||'Jugador'} te invitó a una batalla</strong><div className="notification-battle-actions"><button type="button" className="primary" onClick={()=>void acceptBattleInvite(inv)}>⚔️ Aceptar</button><button type="button" onClick={()=>void declineBattleInvite(inv)}>Rechazar</button></div></div>)}</div>}{unreadFriendRequests.length>0&&<button type="button" className="notification-item" onClick={()=>{if(user)friendRequests.forEach(r=>localStorage.setItem(`auraFriendRequestRead:${user.uid}:${r.id}`,'1'));setUnreadFriendRequests([]);setNotificationOpen(false);navigateTab('friends')}}><strong>👥 {unreadFriendRequests.length} solicitud{unreadFriendRequests.length===1?'':'es'} de amistad</strong><small>Tienes nuevas solicitudes para revisar.</small></button>}{unreadPrivateMessages.length>0&&<div className="notification-messages"><div className="notification-subtitle">💬 Mensajes nuevos</div>{unreadPrivateMessages.slice(0,5).map(m=>{const f=friends.find(x=>x.id===m.uid);return <button type="button" className="notification-item" key={m.id} onClick={()=>f&&openPrivateChat(f)}><strong>{m.name||f?.name||'Jugador'}</strong><small>{m.text}</small></button>})}</div>}{unreadClanJoinRequests.length>0&&<div className="notification-messages"><div className="notification-subtitle">🛡️ Solicitudes de clan</div>{unreadClanJoinRequests.slice(0,5).map(r=><button type="button" className="notification-item clan-notification-item" key={r.id} onClick={()=>{localStorage.setItem(`auraClanJoinRead:${user.uid}:${r.id}`,'1');setUnreadClanJoinRequests(prev=>prev.filter(x=>x.id!==r.id));const c=clans.find(x=>x.id===r.clanId);if(c){setSelectedClan(c);setNotificationOpen(false);navigateTab('clans')}}}><strong>👥 {r.requesterName||'Jugador'} quiere unirse a tu clan</strong><small>{r.clanName||'Solicitud de ingreso'}</small></button>)}</div>}{unreadClanInvites.length>0&&<div className="notification-messages"><div className="notification-subtitle">📨 Invitaciones a clan</div>{unreadClanInvites.slice(0,5).map(r=><div className="notification-item clan-notification-item" key={r.id} onClick={()=>{localStorage.setItem(`auraClanInviteRead:${user.uid}:${r.id}`,'1')}}><strong>🛡️ {r.senderName||'Jugador'} te invitó a un clan</strong><small>{r.clanName||'Invitación de clan'}</small><div className="notification-battle-actions"><button type="button" className="primary" onClick={()=>void acceptClanInvite(r)}>Aceptar</button><button type="button" onClick={()=>void declineClanInvite(r)}>Rechazar</button></div></div>)}</div>}{unreadFriendRequests.length===0&&unreadPrivateMessages.length===0&&battleInvites.length===0&&unreadClanJoinRequests.length===0&&unreadClanInvites.length===0&&<div className="notification-empty">No tienes notificaciones nuevas.</div>}</div>}</div>}<select value={lang} onChange={e=>setLang(e.target.value as Lang)}><option value="es">ES</option><option value="en">EN</option><option value="pt">PT</option><option value="fr">FR</option><option value="de">DE</option><option value="it">IT</option><option value="tr">TR</option><option value="ja">JA</option><option value="ko">KO</option><option value="zh">中文</option></select><button onClick={logout}>{t.logout}</button></div></header>
  <div className="layout"><aside className="sidebar"><div className="mini-profile"><div className="profile-icon">⚡</div><div><strong>{user.displayName||'Jugador'}</strong><small>⚡ {profile.aura} Aura · Lv.{profile.level}</small></div></div>{nav.map(n=><button key={n} className={tab===n?'nav active':'nav'} onClick={()=>navigateTab(n)}>{icon(n)} {t[n]}</button>)}<div className="ad-slot side-ad">PUBLICIDAD<br/><small>Espacio para marcas</small></div></aside>
  <main className="content">
  {tab==='home'&&<section className="home-hero"><div className="hero-copy"><div className="eyebrow">⚡ ONLINE AURA ARENA</div><h1>{t.welcome}</h1><p>Compite en vivo, gana Aura y construye tu reputación.</p><div className="hero-actions"><button className="primary" onClick={()=>navigateTab('battle')}>⚔️ {t.play}</button><button onClick={()=>navigateTab('profile')}>👤 Mi perfil</button></div><div className="quick-stats"><Stat label="⚡ Tu Aura" value={profile.aura}/><Stat label="🏆 Victorias" value={profile.wins}/><Stat label="🔥 Nivel" value={profile.level}/></div></div><div className="hero-art"><img src="/assets/aura-arena-home.png" alt="AURA BATTLE Arena"/><div className="hero-glow">LIVE</div></div><div className="home-grid"><Card icon="⚔️" title="Batallas 1v1" text="Crea una sala y reta a otra persona con cámara." action={()=>navigateTab('battle')}/><Card icon="🤖" title="IA Aura" text="Convierte señales visuales de tu cámara en una métrica de Aura." action={()=>navigateTab('ai')}/><Card icon="🏆" title="Ranking global" text="Sube posiciones con tus victorias y puntuación." action={()=>navigateTab('ranking')}/><Card icon="🛡️" title="Clanes" text="Forma equipos y crea una comunidad alrededor de tu Aura." action={()=>navigateTab('clans')}/></div><div className="ad-slot banner-ad">ESPACIO PUBLICITARIO · AURA BATTLE</div></section>}
- {tab==='profile'&&<Panel title="👤 Mi perfil"><div className="profile-head"><div className="big-profile-icon">⚡</div><div><h2>{user.displayName||'Jugador'}</h2><p>{user.email}</p><span className="badge">Nivel {profile.level}</span></div></div><div className="stats"><Stat label="Aura" value={profile.aura}/><Stat label="Victorias" value={profile.wins}/><Stat label="Derrotas" value={profile.losses}/><Stat label="Ratio" value={`${profile.wins+profile.losses?Math.round(profile.wins/(profile.wins+profile.losses)*100):0}%`}/></div><div className="profile-actions"><button className="primary" onClick={()=>navigateTab('battle')}>⚔️ Ir a batallar</button><button onClick={()=>navigateTab('settings')}>⚙️ Ajustes</button></div></Panel>}
+ {tab==='profile'&&<Panel title="👤 Mi perfil"><div className="profile-head"><div className="big-profile-icon">⚡</div><div><h2>{user.displayName||'Jugador'}</h2><p>{user.email}</p><span className="badge">Nivel {profile.level}</span>{myRank&&<span className="badge" style={{marginLeft:8}}>🏆 #{myRank}</span>}</div></div><div className="progress-card"><div className="progress-top"><strong>⚡ Progreso de nivel</strong><span>{profile.level>=100?'NIVEL MÁXIMO':`${profile.aura%100}/100 Aura`}</span></div><div className="progress-track"><div className="progress-fill" style={{width:`${profile.level>=100?100:profile.aura%100}%`}}/></div><small>{profile.level>=100?'Has alcanzado el nivel máximo.':`Faltan ${100-(profile.aura%100)} Aura para el nivel ${profile.level+1}.`}</small></div><div className="stats"><Stat label="⚡ Aura" value={profile.aura}/><Stat label="⚔️ Batallas" value={profile.battles}/><Stat label="🏆 Victorias" value={profile.wins}/><Stat label="❌ Derrotas" value={profile.losses}/><Stat label="🤝 Empates" value={profile.draws}/><Stat label="📈 Ratio" value={`${profile.battles?Math.round(profile.wins/profile.battles*100):0}%`}/><Stat label="🔥 Racha actual" value={profile.currentStreak}/><Stat label="👑 Mejor racha" value={profile.bestStreak}/></div><div className="profile-earned"><span>💰 Aura ganada</span><strong>{profile.auraEarned}</strong></div><div className="profile-actions"><button className="primary" onClick={()=>navigateTab('battle')}>⚔️ Ir a batallar</button><button onClick={()=>navigateTab('ranking')}>🏆 Ver ranking</button><button onClick={()=>navigateTab('settings')}>⚙️ Ajustes</button></div>{publicProfile&&<div className="public-profile"><div><strong>👤 {publicProfile.name}</strong><small>⚡ {publicProfile.aura} Aura</small></div><button onClick={()=>setPublicProfile(null)}>Cerrar</button></div>}</Panel>}
  {tab==='friends'&&<Panel title={`👥 Amigos${friendRequests.length?` · 🔔 ${friendRequests.length}`:''}`}><p>Encuentra jugadores y añade rivales a tu red.</p>{friendRequests.length>0&&<div className="friend-requests"><div className="section-title">🔔 Solicitudes de amistad ({friendRequests.length})</div>{friendRequests.map(r=><div className="list-row friend-request-row" key={r.id}>🧑 <span><strong>{r.senderName}</strong><small>⚡ {r.senderAura} Aura · quiere ser tu amigo</small></span><div className="inline request-actions"><button className="primary" onClick={()=>acceptFriendRequest(r)}>✓ Aceptar</button><button onClick={()=>rejectFriendRequest(r)}>✕</button></div></div>)}</div>}<div className="inline"><input placeholder="Nombre del jugador" value={friendSearch} onChange={e=>setFriendSearch(e.target.value)} onKeyDown={e=>e.key==='Enter'&&searchFriends()}/><button type="button" onClick={searchFriends} disabled={friendSearching}>{friendSearching?'⏳ Buscando…':'🔎 Buscar'}</button></div>{friendMsg&&<div className="notice">{friendMsg}</div>}{friendResults.length>0&&<div className="list">{friendResults.map(f=><div className="list-row" key={f.id}>🧑 <span>{f.name}<small>⚡ {f.aura}</small></span><button onClick={()=>addFriend(f)}>📨 Solicitar</button></div>)}</div>}<div className="section-title">Mis amigos</div><div className="list">{friends.length?friends.map(f=><div className="list-row" key={f.id}>🟢 <span>{f.name}<small>⚡ {f.aura}</small></span><div className="inline friend-actions"><button className="primary" onClick={()=>openPrivateChat(f)}>💬 Chat</button><button type="button" className="danger-btn" onClick={()=>removeFriend(f)} title="Eliminar amigo">🗑️</button></div></div>):<div className="empty">Todavía no tienes amigos. Busca un jugador arriba.</div>}</div></Panel>}
  {tab==='chat'&&<Panel title={privateFriend?`💬 Chat con ${privateFriend.name}`:'💬 Chat global'}>{privateFriend?<><button type="button" onClick={()=>{setPrivateFriend(null);setPrivateChat([])}}>← Chat global</button><div className="private-chat-head">🟢 {privateFriend.name}<small>⚡ {privateFriend.aura} Aura</small><button type="button" className="battle-invite-btn" onClick={()=>void inviteBattleWithFriend(privateFriend)}>⚔️ Invitar a batalla</button></div>{battleInvites.filter(inv=>inv.senderId===privateFriend.id&&inv.receiverId===user.uid).map(inv=><div className="private-battle-notice" key={inv.id}><strong>⚔️ {inv.senderName||privateFriend.name} te invitó a una batalla</strong><span>La sala está lista. Puedes entrar directamente.</span><div className="notification-battle-actions"><button type="button" className="primary" onClick={()=>void acceptBattleInvite(inv)}>⚔️ Aceptar</button><button type="button" onClick={()=>void declineBattleInvite(inv)}>Rechazar</button></div></div>)}<div className="chat-box private-chat-box">{privateChat.length?privateChat.map(m=><div className={m.uid===user.uid?'bubble mine':'bubble'} key={m.id}><strong>{m.name}:</strong><span> {m.text}</span></div>):<div className="empty">{privateLoading?'Cargando conversación…':'Todavía no hay mensajes. ¡Saluda a tu amigo!'}</div>}<div ref={privateChatEndRef} className="chat-scroll-anchor" aria-hidden="true" /></div><form className="inline private-chat-form" onSubmit={sendPrivateChat}><input ref={privateInputRef} maxLength={300} value={privateInput} onChange={e=>setPrivateInput(e.target.value)} placeholder={`Escribe a ${privateFriend.name}…`}/><button className="primary" type="submit" disabled={!privateInput.trim()||privateLoading} onPointerDown={e=>e.preventDefault()}>Enviar</button></form>{privateMsg&&<div className="notice">{privateMsg}</div>}<small className="small">Chat privado entre amigos. Solo ustedes dos pueden verlo.</small></>:<><div className="chat-box">{chat.length?chat.map(m=><div className={m.uid===user.uid?'bubble mine':'bubble'} key={m.id}><strong>{m.name}:</strong><span> {m.text}</span></div>):<div className="empty">Sé la primera persona en escribir.</div>}</div><form className="inline" onSubmit={sendChat}><input maxLength={300} value={chatInput} onChange={e=>setChatInput(e.target.value)} placeholder="Escribe un mensaje…"/><button className="primary" type="submit" disabled={!chatInput.trim()||chatLoading} onPointerDown={e=>e.preventDefault()}>Enviar</button></form>{chatMsg&&<div className="notice">{chatMsg}</div>}<small className="small">Chat público de la comunidad. No compartas datos personales.</small></>}</Panel>}
  {tab==='battle'&&<Panel title="⚔️ Batallas 1v1">{battleResult?<div className={`battle-result-card ${battleResult.outcome}`}>
@@ -1120,13 +1244,13 @@ useEffect(()=>{
    <p className="battle-result-sub">{battleResult.outcome==='draw'?'Ambos jugadores obtienen +10 Aura.':battleResult.outcome==='win'?'+25 Aura para ti.':'+5 Aura para ti.'}</p>
    <div className="battle-scoreboard"><div><span>TÚ</span><strong>⚡ {battleResult.localScore}</strong><small>{battleResult.outcome==='win'?'GANADOR':battleResult.outcome==='draw'?'EMPATE':'DERROTA'}</small></div><div className="score-vs">VS</div><div><span>RIVAL</span><strong>⚡ {battleResult.rivalScore}</strong><small>{battleResult.outcome==='loss'?'GANADOR':battleResult.outcome==='draw'?'EMPATE':'DERROTA'}</small></div></div>
    <button className="primary result-home-btn" onClick={returnToHome}>← Volver al inicio</button>
- </div>:<><div className="battle-intro"><div><h2>Entra a la arena</h2><p>Crea una sala y comparte el código con tu rival, o únete a una sala existente.</p></div><div className="live-dot">● LIVE</div></div><div className="room-card">{!roomCode?<div className="room-actions"><button className="primary" onClick={createRoom}>{t.create}</button><span>o</span><input maxLength={6} placeholder={t.code} value={room} onChange={e=>setRoom(e.target.value.toUpperCase())}/><button onClick={joinRoom}>{t.join}</button></div>:<><div className="room-code">{roomCode}</div><button className="copy-btn" onClick={()=>navigator.clipboard?.writeText(roomCode)}>📋 Copiar código</button><div className="status">{roomStatus}</div><div className="battle-actions"><button onClick={startCamera}>📷 {cameraOn?'CÁMARA ACTIVA':'ACTIVAR CÁMARA'}</button><button className="primary" disabled={!opponentJoined||!cameraOn||!bothCamerasReady||!poseReady||battleStarted} onClick={startBattle}>🔥 {battleStarted?'BATALLA EN CURSO':!poseReady?'CARGANDO IA…':battleReady?'⏳ LISTO — ESPERANDO RIVAL':opponentReady?'⚔️ RIVAL LISTO · YO TAMBIÉN':'✓ ESTOY LISTO'}</button>{battleStarted&&<button onClick={finishBattle}>🏁 Terminar y guardar resultado</button>}</div></>}</div><div className="video-grid"><VideoCard title={user.displayName||'Jugador 1'} videoRef={videoRef} score={aura} muted/><VideoCard title="Rival" videoRef={remoteVideoRef} score={opponentAura}/></div>{battleStarted&&<div className="battle-banner"><div>🧠 IA ANALIZANDO · ⏱️ {battleSeconds}s · ⚡ {aura} Aura</div><div className="move-detection">{detectedMove}{moveBonus>0&&<span> +{moveBonus}</span>}</div> <button className="music-toggle" onClick={()=>setMusicOn(v=>!v)}>{musicOn?'🔊 Música':'🔇 Música'}</button></div>}</>}</Panel>}
+ </div>:<><div className="battle-intro"><div><h2>Entra a la arena</h2><p>Crea una sala y comparte el código con tu rival, o únete a una sala existente.</p></div><div className="live-dot">● LIVE</div></div><div className="room-card">{!roomCode?<div className="room-actions"><button className="primary" onClick={createRoom}>{t.create}</button><span>o</span><input maxLength={6} placeholder={t.code} value={room} onChange={e=>setRoom(e.target.value.toUpperCase())}/><button onClick={joinRoom}>{t.join}</button></div>:<><div className="room-code">{roomCode}</div><button className="copy-btn" onClick={()=>navigator.clipboard?.writeText(roomCode)}>📋 Copiar código</button><div className="status">{roomStatus}</div><div className="battle-actions"><button onClick={startCamera}>📷 {cameraOn?'CÁMARA ACTIVA':'ACTIVAR CÁMARA'}</button><button className="primary" disabled={!opponentJoined||!cameraOn||!bothCamerasReady||!poseReady||battleStarted} onClick={startBattle}>🔥 {battleStarted?'BATALLA EN CURSO':!poseReady?'CARGANDO IA…':battleReady?'⏳ LISTO — ESPERANDO RIVAL':opponentReady?'⚔️ RIVAL LISTO · YO TAMBIÉN':'✓ ESTOY LISTO'}</button>{battleStarted&&<button onClick={finishBattle}>🏁 Terminar y guardar resultado</button>}</div></>}</div><div className="video-grid"><VideoCard title={user.displayName||'Jugador 1'} videoRef={videoRef} score={aura} muted/><VideoCard title="Rival" videoRef={remoteVideoRef} score={opponentAura}/></div>{battleCountdown>0&&<div className="battle-countdown"><small>LA BATALLA COMIENZA EN</small><strong>{battleCountdown}</strong><span>⚡ Prepárate para ganar Aura</span></div>}{battleStarted&&<div className="battle-banner"><div>🧠 IA ANALIZANDO · ⏱️ {battleSeconds}s · ⚡ {aura} Aura</div><div className="move-detection">{detectedMove}{moveBonus>0&&<span> +{moveBonus}</span>}</div> <button className="music-toggle" onClick={()=>setMusicOn(v=>!v)}>{musicOn?'🔊 Música':'🔇 Música'}</button></div>}</>}</Panel>}
  {tab==='ai'&&<Panel title="🤖 IA Aura"><div className="training-notice"><strong>🎯 ÁREA DE ENTRENAMIENTO</strong><span>Entrena durante 15 segundos con la IA de movimiento y mejora tu control.</span><small>🏆 Cada entrenamiento completado otorga <b>+1 Aura</b>.</small></div><div className="ai-camera-card"><div className="ai-camera-frame"><video ref={aiVideoRef} autoPlay playsInline muted/>{!cameraOn&&<div className="ai-camera-placeholder">📷<span>Activa tu cámara para entrenar y medir tu Aura</span></div>}<div className="ai-camera-badge">{cameraOn?'● CÁMARA ACTIVA':'● CÁMARA INACTIVA'}</div>{cameraOn&&<div className="ai-aura-overlay"><span>⚡ AURA</span><b>{aura}</b></div>}</div><div className="ai-aura-label">⚡ Aura detectada: <strong>{aura}</strong></div><div className="ai-meter"><div className="meter-fill" style={{width:`${aura}%`}}/></div></div><div className="ai-hero"><div><h2>{trainingActive?'Entrenamiento en curso':'Tu Aura de entrenamiento'}</h2><div className="aura-number">{trainingActive?trainingSeconds:aura}</div><p>{trainingActive?`Mantén tus movimientos durante ${trainingSeconds} segundos.`:'La IA analiza tus movimientos corporales localmente.'}</p></div><div className="ai-orb">⚡</div></div><div className="ai-training-actions"><button className="primary" onClick={startCamera} disabled={trainingActive}>{cameraOn?'✓ Cámara conectada':'📷 Activar cámara'}</button><button className="primary" onClick={()=>{if(!cameraOn){setRoomStatus('📷 Activa primero la cámara.');return}if(!poseLandmarkerRef.current){setRoomStatus('🧠 La IA todavía está cargando. Espera unos segundos.');return}movementScoreRef.current=0;previousPoseRef.current=null;poseHistoryRef.current=[];poseFrameCountRef.current=0;poseVisibleFrameCountRef.current=0;setAura(0);setTrainingDone(false);setTrainingSeconds(15);setTrainingActive(true);setRoomStatus('🧠 Entrenamiento iniciado. ¡15 segundos!')}} disabled={!cameraOn||trainingActive||!poseReady}> {trainingActive?`⏱️ ${trainingSeconds}s`:'🔥 INICIAR ENTRENAMIENTO'}</button></div>{trainingDone&&<div className="notice">🎉 ¡Entrenamiento completado! <strong>+1 Aura</strong> se añadió a tu perfil.</div>}<div className="notice">Consejo: buena iluminación, cuerpo visible y encuadre estable ayudan a obtener una señal más consistente.</div></Panel>}
- {tab==='ranking'&&<Panel title="🏆 Ranking global"><div className="podium"><div>🥈 {leaders[1]?.name||'—'}<b>{leaders[1]?.aura||0}</b></div><div>🥇 {leaders[0]?.name||'—'}<b>{leaders[0]?.aura||0}</b></div><div>🥉 {leaders[2]?.name||'—'}<b>{leaders[2]?.aura||0}</b></div></div><div className="leader-list">{leaders.map((x,i)=><div className="leader" key={x.id}><span>#{i+1} · {x.name}</span><b>⚡ {x.aura}</b></div>)}</div></Panel>}
+ {tab==='ranking'&&<Panel title="🏆 Ranking global"><div className="ranking-my-position">{myRank?<>Tu posición actual: <strong>#{myRank}</strong></>:<>Estás fuera del Top 100 por ahora.</>}</div><div className="podium"><div>🥈 {leaders[1]?.name||'—'}<b>{leaders[1]?.aura||0}</b></div><div>🥇 {leaders[0]?.name||'—'}<b>{leaders[0]?.aura||0}</b></div><div>🥉 {leaders[2]?.name||'—'}<b>{leaders[2]?.aura||0}</b></div></div><div className="leader-list">{leaders.map((x,i)=><button className={`leader ${x.id===user.uid?'leader-me':''}`} key={x.id} onClick={()=>setPublicProfile(x)}><span>#{i+1} · {x.name}{x.id===user.uid?' · Tú':''}</span><b>⚡ {x.aura}</b></button>)}</div><small className="small">Toca un jugador para ver su resumen público.</small></Panel>}
  {tab==='league'&&<Panel title="🥇 Liga"><div className="league-card"><div className="league-badge">⚡</div><h2>Bronce</h2><p>Gana batallas para subir a Plata, Oro y las divisiones superiores.</p><div className="progress"><span style={{width:`${Math.min(100,(profile.wins*10)%101)}%`}}/></div><small>{profile.wins*10} / 100 puntos de ascenso</small></div><div className="three-col"><Stat label="Temporada" value="01"/><Stat label="Victorias" value={profile.wins}/><Stat label="Nivel" value={profile.level}/></div></Panel>}
- {tab==='clans'&&<Panel title="🛡️ Clanes"><div className="clan-create"><div className="section-title">🏰 Crear mi clan</div><div className="clan-form-grid"><div className="clan-field"><label>Nombre del clan</label><input placeholder="Ej.: Guerreros del Aura" value={clanName} onChange={e=>{setClanName(e.target.value);setClanTag(buildClanTag(e.target.value));setClanMsg('')}}/></div><div className="clan-field"><label>Etiqueta automática <small>(se genera con el nombre)</small></label><input className="clan-tag-input" value={clanTag||buildClanTag(clanName)} readOnly aria-readonly="true"/><small className="clan-field-help">Se genera con el nombre y nunca se repite.</small></div><div className="clan-field clan-description-field"><label>Descripción del clan <small>(opcional)</small></label><textarea placeholder="Cuéntanos sobre tu clan…" maxLength={160} value={clanDescription} onChange={e=>setClanDescription(e.target.value)}/><small className="clan-counter">{clanDescription.length}/160</small></div><div className="clan-field clan-visibility-field"><label>Visibilidad</label><select value={clanVisibility} onChange={e=>setClanVisibility(e.target.value as 'public'|'private')}><option value="public">🌎 Público</option><option value="private">🔒 Privado</option></select></div></div><div className="clan-create-foot"><small>⚡ Crear clan cuesta <strong>100 Aura</strong>. {myClanId?'Ya perteneces a un clan.':''}</small><button className="primary" onClick={()=>void createClan()} disabled={!!myClanId}>＋ Crear clan</button></div></div>{clanMsg&&<div className="notice">{clanMsg}</div>}<div className="section-title">🔎 Buscar clanes</div><div className="inline clan-search"><input placeholder="Buscar por nombre o etiqueta" value={clanSearch} onChange={e=>setClanSearch(e.target.value)} onKeyDown={e=>e.key==='Escape'&&setClanSearch('')}/>{clanSearch.trim()&&<button type="button" onClick={()=>setClanSearch('')} aria-label="Limpiar búsqueda">✕</button>}</div>{clanSearch.trim()&&<small className="clan-search-status">{clanSearching?'🔎 Buscando en la comunidad…':`${filteredClans.length} clan${filteredClans.length===1?' encontrado':'es encontrados'}.`}</small>}<div className="section-title clan-community-title">Clanes de la comunidad</div><div className="clan-list">{filteredClans.length?filteredClans.map(c=><div className="clan-card clan-card-v163" key={c.id}><div><h3>{c.name}</h3><p className="clan-tag">[{c.tag||'CLAN'}] · {c.visibility==='private'?'🔒 Privado':'🌎 Público'}</p><p>{c.description||'Clan de la comunidad Aura farming battles.'}</p><small>👥 {c.members?.length||0} miembros</small></div><button type="button" className="secondary clan-view-btn" onClick={()=>{setSelectedClan(c);setClanMsg('')}}>Ver clan</button></div>):<div className="empty">No encontramos clanes con esa búsqueda.</div>}</div>{selectedClan&&<div className="clan-detail"><div className="clan-detail-head"><div><h2>[{selectedClan.tag||'CLAN'}] {selectedClan.name}</h2><p>{selectedClan.description||'Clan de la comunidad Aura farming battles.'}</p></div><button type="button" onClick={()=>setSelectedClan(null)}>✕</button></div><div className="clan-detail-meta"><span>👥 {selectedClan.members?.length||0} miembros</span><span>{selectedClan.visibility==='private'?'🔒 Privado':'🌎 Público'}</span><span>{selectedClan.owner===user?.uid?'👑 Líder':selectedClan.coLeader===user.uid?'🛡️ Co-líder':selectedClan.members?.includes(user.uid)?'⚔️ Miembro':'👤 Visitante'}</span></div>{selectedClan.members?.includes(user.uid)?<div className="clan-members"><h3>👥 Miembros</h3>{clanMembers.map(m=><div className="clan-member-row" key={m.id}><span>{m.id===selectedClan.owner?'👑':m.id===selectedClan.coLeader?'🛡️':'⚔️'} {m.name}</span><small>{m.id===selectedClan.owner?'Líder':m.id===selectedClan.coLeader?'Co-líder':'Miembro'} · ⚡ {m.aura}</small><div className="clan-member-actions">{selectedClanIsLeader&&m.id!==selectedClan.owner&&m.id!==user.uid&&<><button type="button" onClick={()=>void setClanCoLeader(selectedClan,selectedClan.coLeader===m.id?null:m.id)}>{selectedClan.coLeader===m.id?'Quitar Co-líder':'Nombrar Co-líder'}</button><button type="button" onClick={()=>{if(window.confirm(`¿Expulsar a ${m.name} del clan?`))void kickClanMember(selectedClan,m.id)}}>Expulsar</button><button type="button" onClick={()=>{if(window.confirm(`¿Transferir el liderazgo a ${m.name}? Tú quedarás como Co-líder.`))void transferClanLeadership(selectedClan,m.id)}}>Transferir liderazgo</button></>}</div></div>)}{selectedClanIsAdmin&&<div className="clan-admin-invite"><h3>➕ Invitar amigos al clan</h3>{friends.filter(f=>!selectedClan.members?.includes(f.id)).length?friends.filter(f=>!selectedClan.members?.includes(f.id)).map(f=>{const sent=clanInvitesSent.some(r=>r.clanId===selectedClan.id&&r.receiverId===f.id&&r.status==='pending');const sending=clanInvitingFriendId===f.id;return <div className="clan-invite-row" key={f.id}><span>👤 {f.name}</span><button type="button" className={sent?'clan-invite-sent':''} disabled={sent||sending} onClick={()=>void inviteFriendToClan(selectedClan,f)}>{sending?'⏳ Enviando…':sent?'📨 Enviada':'➕ Invitar'}</button></div>}):<small>No tienes amigos disponibles para invitar.</small>}</div>}{selectedClan.owner===user.uid?<div className="clan-leader-warning">👑 Eres el Líder. Para salir debes transferir primero el liderazgo.</div>:<button type="button" className="clan-leave-btn" onClick={()=>void leaveClan(selectedClan)}>🚪 Salir del clan</button>}</div>:<div className="clan-join-box">{pendingRequestForSelected?<div className="notice">⏳ Solicitud pendiente. El liderazgo debe aprobarla.</div>:<button type="button" className="primary" onClick={()=>void requestToJoinClan(selectedClan)} disabled={!!myClanId}>➕ Solicitar unirme al clan</button>}{myClanId&&<small>Ya perteneces a otro clan.</small>}</div>}{selectedClanIsAdmin&&<div className="clan-admin-requests"><h3>📨 Solicitudes de ingreso</h3>{clanJoinRequests.length?clanJoinRequests.map(r=><div className="clan-request-row" key={r.id}><div><strong>{r.requesterName||'Jugador'}</strong><small>Quiere unirse a tu clan.</small></div><div className="clan-request-actions"><button type="button" className="primary" onClick={()=>void approveClanRequest(r)}>Aceptar</button><button type="button" onClick={()=>void rejectClanRequest(r)}>Rechazar</button></div></div>):<div className="empty">No hay solicitudes pendientes.</div>}</div>}</div>}</Panel>}
+ {tab==='clans'&&<Panel title="🛡️ Clanes"><div className="clan-create"><div className="section-title">🏰 Crear mi clan</div><div className="clan-form-grid"><div className="clan-field"><label>Nombre del clan</label><input placeholder="Ej.: Guerreros del Aura" value={clanName} onChange={e=>{setClanName(e.target.value);setClanTag(buildClanTag(e.target.value));setClanMsg('')}}/></div><div className="clan-field"><label>Etiqueta automática <small>(se genera con el nombre)</small></label><input className="clan-tag-input" value={clanTag||buildClanTag(clanName)} readOnly aria-readonly="true"/><small className="clan-field-help">Se genera con el nombre y nunca se repite.</small></div><div className="clan-field clan-description-field"><label>Descripción del clan <small>(opcional)</small></label><textarea placeholder="Cuéntanos sobre tu clan…" maxLength={160} value={clanDescription} onChange={e=>setClanDescription(e.target.value)}/><small className="clan-counter">{clanDescription.length}/160</small></div><div className="clan-field clan-visibility-field"><label>Visibilidad</label><select value={clanVisibility} onChange={e=>setClanVisibility(e.target.value as 'public'|'private')}><option value="public">🌎 Público</option><option value="private">🔒 Privado</option></select></div></div><div className="clan-create-foot"><small>⚡ Crear clan cuesta <strong>100 Aura</strong>. {myClanId?'Ya perteneces a un clan.':''}</small><button className="primary" onClick={()=>void createClan()} disabled={!!myClanId}>＋ Crear clan</button></div></div>{clanMsg&&<div className="notice">{clanMsg}</div>}<div className="section-title">🔎 Buscar clanes</div><div className="inline clan-search"><input placeholder="Buscar por nombre o etiqueta" value={clanSearch} onChange={e=>setClanSearch(e.target.value)} onKeyDown={e=>e.key==='Escape'&&setClanSearch('')}/>{clanSearch.trim()&&<button type="button" onClick={()=>setClanSearch('')} aria-label="Limpiar búsqueda">✕</button>}</div>{clanSearch.trim()&&<small className="clan-search-status">{clanSearching?'🔎 Buscando en la comunidad…':`${filteredClans.length} clan${filteredClans.length===1?' encontrado':'es encontrados'}.`}</small>}<div className="section-title clan-community-title">Clanes de la comunidad</div><div className="clan-list">{filteredClans.length?filteredClans.map(c=><div className="clan-card clan-card-v163" key={c.id}><div><h3>{c.name}</h3><p className="clan-tag">[{c.tag||'CLAN'}] · {c.visibility==='private'?'🔒 Privado':'🌎 Público'}</p><p>{c.description||'Clan de la comunidad Aura farming battles.'}</p><small>👥 {c.members?.length||0} miembros</small></div><button type="button" className="secondary clan-view-btn" onClick={()=>{setSelectedClan(c);setClanMsg('')}}>Ver clan</button></div>):<div className="empty">No encontramos clanes con esa búsqueda.</div>}</div>{selectedClan&&<div className="clan-detail"><div className="clan-detail-head"><div><h2>[{selectedClan.tag||'CLAN'}] {selectedClan.name}</h2><p>{selectedClan.description||'Clan de la comunidad Aura farming battles.'}</p></div><button type="button" onClick={()=>setSelectedClan(null)}>✕</button></div><div className="clan-detail-meta"><span>👥 {selectedClan.members?.length||0} miembros</span><span>{selectedClan.visibility==='private'?'🔒 Privado':'🌎 Público'}</span><span>{selectedClan.owner===user?.uid?'👑 Líder':selectedClan.coLeader===user.uid?'🛡️ Co-líder':selectedClan.members?.includes(user.uid)?'⚔️ Miembro':'👤 Visitante'}</span></div>{selectedClan.members?.includes(user.uid)?<div className="clan-members"><h3>👥 Miembros</h3>{clanMembers.map(m=><div className="clan-member-row" key={m.id}><span>{m.id===selectedClan.owner?'👑':m.id===selectedClan.coLeader?'🛡️':'⚔️'} {m.name}</span><small>{m.id===selectedClan.owner?'Líder':m.id===selectedClan.coLeader?'Co-líder':'Miembro'} · ⚡ {m.aura}</small><div className="clan-member-actions">{selectedClanIsLeader&&m.id!==selectedClan.owner&&m.id!==user.uid&&<><button type="button" onClick={()=>void setClanCoLeader(selectedClan,selectedClan.coLeader===m.id?null:m.id)}>{selectedClan.coLeader===m.id?'Quitar Co-líder':'Nombrar Co-líder'}</button><button type="button" onClick={()=>{if(window.confirm(`¿Expulsar a ${m.name} del clan?`))void kickClanMember(selectedClan,m.id)}}>Expulsar</button><button type="button" onClick={()=>{if(window.confirm(`¿Transferir el liderazgo a ${m.name}? Tú quedarás como Co-líder.`))void transferClanLeadership(selectedClan,m.id)}}>Transferir liderazgo</button></>}</div></div>)}{selectedClanIsAdmin&&<div className="clan-admin-invite"><h3>➕ Invitar amigos al clan</h3>{friends.filter(f=>!selectedClan.members?.includes(f.id)).length?friends.filter(f=>!selectedClan.members?.includes(f.id)).map(f=>{const sent=clanInvitesSent.some(r=>r.clanId===selectedClan.id&&r.receiverId===f.id&&r.status==='pending');const sending=clanInvitingFriendId===f.id;return <div className="clan-invite-row" key={f.id}><span>👤 {f.name}</span><button type="button" className={sent?'clan-invite-sent':''} disabled={sent||sending} onClick={()=>void inviteFriendToClan(selectedClan,f)}>{sending?'⏳ Enviando…':sent?'📨 Enviada':'➕ Invitar'}</button></div>}):<small>No tienes amigos disponibles para invitar.</small>}</div><div className="clan-chat-panel"><div className="clan-chat-head"><div><h3>💬 Chat del clan</h3><small>Solo los miembros del clan pueden participar.</small></div>{unreadClanChatCount>0&&<span className="clan-chat-unread">🔔 {unreadClanChatCount}</span>}</div><div className="chat-box clan-chat-box">{clanChat.length?clanChat.map(m=><div className={m.uid===user.uid?'bubble mine':'bubble'} key={m.id}><strong>{m.name}:</strong><span> {m.text}</span></div>):<div className="empty">Todavía no hay mensajes. ¡Saluda al clan!</div>}<div className="chat-scroll-anchor" aria-hidden="true" /></div><form className="inline clan-chat-form" onSubmit={sendClanChat}><input maxLength={300} value={clanChatInput} onChange={e=>setClanChatInput(e.target.value)} placeholder="Escribe al clan…"/><button className="primary" type="submit" disabled={!clanChatInput.trim()||clanChatLoading}>Enviar</button></form>{clanChatMsg&&<div className="notice">{clanChatMsg}</div>}</div></div>}{selectedClan.owner===user.uid?<div className="clan-leader-warning">👑 Eres el Líder. Para salir debes transferir primero el liderazgo.</div>:<button type="button" className="clan-leave-btn" onClick={()=>void leaveClan(selectedClan)}>🚪 Salir del clan</button>}</div>:<div className="clan-join-box">{pendingRequestForSelected?<div className="notice">⏳ Solicitud pendiente. El liderazgo debe aprobarla.</div>:<button type="button" className="primary" onClick={()=>void requestToJoinClan(selectedClan)} disabled={!!myClanId}>➕ Solicitar unirme al clan</button>}{myClanId&&<small>Ya perteneces a otro clan.</small>}</div>}{selectedClanIsAdmin&&<div className="clan-admin-requests"><h3>📨 Solicitudes de ingreso</h3>{clanJoinRequests.length?clanJoinRequests.map(r=><div className="clan-request-row" key={r.id}><div><strong>{r.requesterName||'Jugador'}</strong><small>Quiere unirse a tu clan.</small></div><div className="clan-request-actions"><button type="button" className="primary" onClick={()=>void approveClanRequest(r)}>Aceptar</button><button type="button" onClick={()=>void rejectClanRequest(r)}>Rechazar</button></div></div>):<div className="empty">No hay solicitudes pendientes.</div>}</div>}</div>}</Panel>}
  {tab==='premium'&&<Panel title="💎 Premium"><div className="premium-box"><div className="premium-icon">💎</div><h2>AURA BATTLE Premium</h2><p>Beneficios previstos: cosméticos exclusivos, estadísticas avanzadas, insignias y experiencia sin publicidad.</p><div className="premium-list"><span>✓ Efectos y beneficios exclusivos</span><span>✓ Estadísticas avanzadas</span><span>✓ Insignia Premium</span><span>✓ Sin publicidad</span></div><button className="primary" onClick={()=>setPremium(v=>!v)}>{premium?'✓ Premium demo activado':'Ver beneficios'}</button></div><div className="notice">Los pagos reales todavía no están activados. Antes de cobrar, conectaremos un proveedor de pagos y políticas legales.</div></Panel>}
- {tab==='settings'&&<Panel title="⚙️ Ajustes"><div className="section-title">🧪 Diagnóstico de conexión</div><p>Comprueba si tu cuenta puede comunicarse con Firestore.</p><button type="button" className="primary" onClick={()=>void runFirebaseDiagnostic()} disabled={firebaseDiagBusy}>{firebaseDiagBusy?'⏳ Comprobando…':'🔎 Probar Firebase'}</button>{firebaseDiag&&<div className="notice">{firebaseDiag}</div>}<div className="settings-row"><span>Idioma</span><select value={lang} onChange={e=>setLang(e.target.value as Lang)}><option value="es">Español</option><option value="en">English</option><option value="pt">Português</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="it">Italiano</option><option value="tr">Türkçe</option><option value="ja">日本語</option><option value="ko">한국어</option><option value="zh">中文</option></select></div><div className="settings-row"><span>Tema</span><select value={theme} onChange={e=>setTheme(e.target.value as any)}><option value="neon">Neon</option><option value="midnight">Midnight</option></select></div><div className="settings-row"><span>Cuenta</span><button onClick={logout}>Cerrar sesión</button></div><div className="settings-row"><span>Seguridad</span><small>Firebase Authentication activo</small></div><div className="notice">Protege tu contraseña y no compartas códigos privados de salas fuera de la plataforma.</div></Panel>}
+ {tab==='settings'&&<Panel title="⚙️ Ajustes"><div className="section-title">🔔 Notificaciones</div><p>Activa las notificaciones de Aura farming battles en este dispositivo.</p><button type="button" className="primary" onClick={()=>void enableNotifications()} disabled={pushBusy}>{pushBusy?'⏳ Activando…':'🔔 Activar notificaciones'}</button>{pushStatus&&<div className="notice">{pushStatus}</div>}<div className="section-title">🧪 Diagnóstico de conexión</div><p>Comprueba si tu cuenta puede comunicarse con Firestore.</p><button type="button" className="primary" onClick={()=>void runFirebaseDiagnostic()} disabled={firebaseDiagBusy}>{firebaseDiagBusy?'⏳ Comprobando…':'🔎 Probar Firebase'}</button>{firebaseDiag&&<div className="notice">{firebaseDiag}</div>}<div className="settings-row"><span>Idioma</span><select value={lang} onChange={e=>setLang(e.target.value as Lang)}><option value="es">Español</option><option value="en">English</option><option value="pt">Português</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="it">Italiano</option><option value="tr">Türkçe</option><option value="ja">日本語</option><option value="ko">한국어</option><option value="zh">中文</option></select></div><div className="settings-row"><span>Tema</span><select value={theme} onChange={e=>setTheme(e.target.value as any)}><option value="neon">Neon</option><option value="midnight">Midnight</option></select></div><div className="settings-row"><span>Cuenta</span><button onClick={logout}>Cerrar sesión</button></div><div className="settings-row"><span>Seguridad</span><small>Firebase Authentication activo</small></div><div className="notice">Protege tu contraseña y no compartas códigos privados de salas fuera de la plataforma.</div></Panel>}
  <div className="mobile-bottom-nav">
    {(['home','battle','friends','profile'] as Tab[]).map(n=><button key={n} className={tab===n?'active':''} onClick={()=>{navigateTab(n);setMobileMore(false)}}><span>{icon(n)}</span><small>{t[n]}</small></button>)}
    <button className={mobileMore?'active':''} onClick={()=>setMobileMore(v=>!v)}><span>☰</span><small>Más</small></button>
@@ -1136,11 +1260,11 @@ useEffect(()=>{
 }
 
 function AuthScreen(p:any){
-  const {authMode,setAuthMode,email,setEmail,password,setPassword,password2,setPassword2,name,setName,authMsg,setAuthMsg,handleAuth,resetPassword,resetSent,loginWithGoogle,lang,setLang,t}=p
+  const {authMode,setAuthMode,email,setEmail,password,setPassword,password2,setPassword2,name,setName,authMsg,setAuthMsg,handleAuth,resetPassword,resetSent,loginWithGoogle,lang,setLang,t,legalAccepted,setLegalAccepted,legalDoc,setLegalDoc}=p
   return (
     <div className="auth-shell">
       <div className="auth-brand">
-        <div className="brand">⚡ <span>Aura farming battles</span><b>V5.167</b></div>
+        <div className="brand">⚡ <span>Aura farming battles</span><b>V5.174</b></div>
         <p>La arena donde tu Aura habla por ti.</p>
       </div>
 
@@ -1198,6 +1322,17 @@ function AuthScreen(p:any){
                 <div className={password2?(password===password2?'match ok':'match bad'):'match'}>
                   {password2 ? (password===password2 ? '✓ Las contraseñas coinciden' : '✕ Las contraseñas no coinciden') : 'Confirmación de contraseña'}
                 </div>
+                <div className="legal-consent">
+                  <label className="legal-check">
+                    <input type="checkbox" checked={legalAccepted} onChange={e=>setLegalAccepted(e.target.checked)}/>
+                    <span>He leído y acepto el Reglamento Oficial, los Términos y Condiciones y la Política de Privacidad.</span>
+                  </label>
+                  <div className="legal-links">
+                    <button type="button" onClick={()=>setLegalDoc('reglamento')}>Reglamento</button>
+                    <button type="button" onClick={()=>setLegalDoc('terminos')}>Términos</button>
+                    <button type="button" onClick={()=>setLegalDoc('privacidad')}>Privacidad</button>
+                  </div>
+                </div>
               </>
             )}
 
@@ -1221,6 +1356,26 @@ function AuthScreen(p:any){
       )}
 
       <div className="ad-slot auth-ad">Espacio publicitario · comunidad AURA BATTLE</div>
+
+      {legalDoc && (
+        <div className="legal-modal-backdrop" role="dialog" aria-modal="true" aria-label="Documento legal">
+          <div className="legal-modal">
+            <div className="legal-modal-head">
+              <h2>{legalDoc==='reglamento'?'📜 Reglamento Oficial':legalDoc==='terminos'?'⚖️ Términos y Condiciones':'🔒 Política de Privacidad'}</h2>
+              <button type="button" onClick={()=>setLegalDoc(null)}>✕</button>
+            </div>
+            <div className="legal-modal-body">
+              {legalDoc==='reglamento' ? <>
+                <p><b>Versión 1.0</b></p><h3>Conducta y juego limpio</h3><p>Juega de forma honesta y respetuosa. No se permiten trampas, bots, exploits, manipulación de resultados, acoso, amenazas, suplantación, discriminación ni actividades ilegales.</p><h3>Batallas con cámara</h3><p>La cámara se activa con la acción del usuario y puede procesarse para las mecánicas de Aura y seguridad. No muestres intencionalmente a terceros sin consentimiento, información privada, contenido sexual o material ilegal.</p><h3>Aura, niveles y ranking</h3><p>Son elementos virtuales del juego y pueden corregirse cuando existan errores, fraude o abuso.</p><h3>Chats y clanes</h3><p>El usuario es responsable de lo que publica. Se prohíben spam, amenazas, acoso, fraude y contenido ilegal.</p><h3>Sanciones</h3><p>El operador puede advertir, limitar funciones, cancelar partidas, suspender o cerrar cuentas cuando exista incumplimiento, fraude o riesgo de seguridad, respetando la ley aplicable.</p>
+              </> : legalDoc==='terminos' ? <>
+                <p><b>Versión 1.0</b></p><h3>Aceptación y cuenta</h3><p>Al utilizar AURA FARMING BATTLES aceptas estos términos, el Reglamento Oficial y la Política de Privacidad. Debes proporcionar información veraz y proteger tus credenciales.</p><h3>Propiedad intelectual</h3><p>El nombre, logotipos, interfaz, diseños, código, textos, gráficos y contenido oficial pertenecen a sus titulares o se utilizan bajo licencia. No puedes copiarlos, venderlos o explotarlos sin autorización.</p><h3>Elementos virtuales</h3><p>Aura, niveles, recompensas y rankings no son dinero ni moneda de curso legal.</p><h3>Uso prohibido</h3><p>No se permite acceso no autorizado, fraude, malware, bots no autorizados, manipulación de resultados ni acoso.</p><h3>Disponibilidad y cambios</h3><p>El servicio puede tener mantenimiento, interrupciones o cambios. Los términos pueden actualizarse y los cambios materiales se comunicarán conforme a la ley.</p><h3>Contacto legal</h3><p>Responsable: [NOMBRE DEL TITULAR O EMPRESA]. Contacto: [CORREO OFICIAL].</p>
+              </> : <>
+                <p><b>Versión 1.0</b></p><h3>Datos tratados</h3><p>Podemos tratar datos de cuenta, juego, funciones sociales, datos técnicos, tokens de notificaciones y datos de cámara/movimiento necesarios para las funciones descritas.</p><h3>Finalidades</h3><p>Administrar cuentas, prestar batallas, Aura, progresión, estadísticas, ranking, amigos, chats, clanes y notificaciones, además de seguridad, prevención de abuso y cumplimiento legal.</p><h3>Cámara</h3><p>Cuando activas la cámara, pueden procesarse imágenes o señales de movimiento para la batalla y análisis automatizado. La versión final debe especificar qué se procesa localmente, qué se transmite y qué se conserva.</p><h3>Proveedores</h3><p>La Plataforma puede utilizar servicios tecnológicos como Firebase/Google y proveedores de alojamiento e infraestructura, conforme a la legislación aplicable.</p><h3>Derechos y menores</h3><p>Según la legislación aplicable puedes tener derechos de acceso, corrección, eliminación, oposición, limitación y portabilidad. Se aplicarán restricciones de edad y mecanismos de consentimiento parental cuando correspondan.</p><h3>Contacto</h3><p>[CORREO OFICIAL] · [AUTORIDAD DE PROTECCIÓN DE DATOS, SI CORRESPONDE]</p>
+              </>}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -1229,4 +1384,4 @@ function icon(n:Tab){return ({home:'🏠',profile:'👤',friends:'👥',chat:'�
 function Panel({title,children}:{title:string;children:ReactNode}){return <section className="panel"><div className="panel-title">{title}</div>{children}</section>}
 function Card({icon,title,text,action}:{icon:string;title:string;text:string;action:()=>void}){return <button className="feature" onClick={action}><span>{icon}</span><div><h3>{title}</h3><p>{text}</p></div><b>→</b></button>}
 function Stat({label,value}:{label:string;value:string|number}){return <div className="stat"><small>{label}</small><strong>{value}</strong></div>}
-function VideoCard({title,videoRef,score,muted=false}:{title:string;videoRef:RefObject<HTMLVideoElement|null>;score:number;muted?:boolean}){return <div className="video-card"><h3>{title}</h3><div className="video-frame"><video ref={videoRef} autoPlay playsInline muted={muted}/></div><div className="score-line"><b>⚡ {score}</b><div className="bar"><span style={{width:`${Math.min(100,score)}%`}}/></div></div></div>}
+function VideoCard({title,videoRef,score,muted=false}:{title:string;videoRef:RefObject<HTMLVideoElement|null>;score:number;muted?:boolean}){return <div className="video-card"><h3>{title}</h3><div className="video-frame"><video ref={videoRef} autoPlay playsInline muted={muted}/></div><div className="score-line"><div className="aura-label"><span>⚡ NIVEL DE AURA</span><b>{score} Aura</b></div><div className="bar"><span style={{width:`${Math.min(100,score)}%`}}/></div></div></div>}

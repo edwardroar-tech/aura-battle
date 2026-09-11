@@ -1,29 +1,13 @@
-# Aura farming battles v5.167 — Firebase
+# Aura farming battles v5.170 — Fase 3
 
-## Importante
-Render publica el frontend/servidor, pero **no publica automáticamente `firestore.rules`** en Firebase.
+## Firestore
+Publica `firestore.rules` en Firebase. Debe incluir `users/{userId}/pushTokens/{tokenId}`.
 
-Antes de probar Chat y Clanes, publica el archivo `firestore.rules` incluido en esta versión en el proyecto Firebase `aura-battle-3ced4`.
+## Render
+Configura la variable secreta `FIREBASE_SERVICE_ACCOUNT_JSON` con el JSON de la cuenta de servicio de Firebase Admin. No la publiques en GitHub.
 
-### Opción A — Firebase Console
-1. Abre Firebase Console y selecciona `aura-battle-3ced4`.
-2. Entra a Firestore Database → Rules.
-3. Reemplaza las reglas por el contenido de `firestore.rules` de este ZIP.
-4. Pulsa Publish.
+## Web Push
+La app registra el token FCM desde Ajustes → Notificaciones. La clave pública VAPID está incluida en `src/lib/notifications.ts`.
 
-### Opción B — Firebase CLI
-Desde la raíz del proyecto:
-
-```bash
-firebase login
-firebase use aura-battle-3ced4
-firebase deploy --only firestore:rules
-```
-
-## Diagnóstico dentro de la app
-En Ajustes → Diagnóstico de conexión → Probar Firebase.
-
-Si aparece `permission-denied`, las reglas todavía no están publicadas en el proyecto correcto o la cuenta no tiene permisos.
-
-## Android / FCM
-Esta versión no afirma que el APK tenga FCM nativo. El proyecto actual es React/Web + servidor y no contiene un proyecto Android nativo. La integración FCM nativa del APK será una fase separada después de confirmar Firestore.
+## Android
+Esta versión deja FCM Web y el servidor de envío preparados. El repositorio todavía no contiene un proyecto Android nativo/Capacitor; por eso el push nativo de un APK WebView con la app totalmente cerrada requiere la siguiente integración Android.

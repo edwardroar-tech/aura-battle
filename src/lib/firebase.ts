@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
+import { getMessaging, isSupported, type Messaging } from 'firebase/messaging'
 
 const firebaseConfig = {
   apiKey: 'AIzaSyCNlwur7gY1PKSZClhIye7ti8ZR2KC8EDQ',
@@ -15,3 +16,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig)
 export const auth = getAuth(app)
 export const db = getFirestore(app)
+let messagingPromise: Promise<Messaging | null> | null = null
+export function getMessagingInstance() {
+  if (!messagingPromise) messagingPromise = isSupported().then(ok => ok ? getMessaging(app) : null)
+  return messagingPromise.then(m => { if (!m) throw new Error('fcm-not-supported'); return m })
+}
