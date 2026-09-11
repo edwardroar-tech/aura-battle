@@ -686,3 +686,97 @@ body{min-height:100%;}
 .legal-modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 18px;border-bottom:1px solid rgba(126,142,212,.2)}
 .legal-modal-head h2{margin:0;font-size:20px}.legal-modal-head button{background:transparent!important;border:0!important;color:#fff!important;box-shadow:none!important;font-size:18px;padding:6px!important}
 .legal-modal-body{overflow:auto;padding:18px;color:#d6d9e7;line-height:1.55;font-size:13px}.legal-modal-body h3{font-size:14px;color:#fff;margin:18px 0 6px}.legal-modal-body p{margin:6px 0}
+
+/* v5.174.3 — Rediseño premium del menú de clanes (solo UI) */
+.clan-menu-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px;
+  margin-top:6px;
+}
+.clan-menu-card{
+  position:relative;
+  min-height:150px;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  justify-content:flex-end;
+  gap:7px;
+  padding:20px;
+  overflow:hidden;
+  text-align:left;
+  border:1px solid rgba(139,126,255,.20);
+  border-radius:22px;
+  background:
+    radial-gradient(circle at 100% 0,rgba(121,91,255,.18),transparent 42%),
+    linear-gradient(145deg,rgba(25,29,55,.96),rgba(8,11,24,.98));
+  box-shadow:0 12px 30px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.045);
+  color:#f4f5ff;
+  cursor:pointer;
+  transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease,background .18s ease;
+}
+.clan-menu-card::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:linear-gradient(135deg,rgba(255,255,255,.045),transparent 38%);
+  pointer-events:none;
+}
+.clan-menu-card::after{
+  content:"›";
+  position:absolute;
+  top:18px;
+  right:18px;
+  width:30px;
+  height:30px;
+  display:grid;
+  place-items:center;
+  border:1px solid rgba(255,255,255,.09);
+  border-radius:10px;
+  background:rgba(255,255,255,.035);
+  color:#aeb4d3;
+  font-size:22px;
+  line-height:1;
+  transition:transform .18s ease,color .18s ease,background .18s ease;
+}
+.clan-menu-card:hover{
+  transform:translateY(-3px);
+  border-color:rgba(153,132,255,.55);
+  box-shadow:0 18px 38px rgba(0,0,0,.30),0 0 26px rgba(104,83,255,.10),inset 0 1px 0 rgba(255,255,255,.06);
+  background:
+    radial-gradient(circle at 100% 0,rgba(121,91,255,.25),transparent 44%),
+    linear-gradient(145deg,rgba(30,34,68,.98),rgba(8,11,24,.99));
+}
+.clan-menu-card:hover::after{transform:translateX(2px);color:#fff;background:rgba(126,102,255,.14)}
+.clan-menu-card:active{transform:translateY(-1px) scale(.99)}
+.clan-menu-card:focus-visible{outline:2px solid rgba(170,157,255,.9);outline-offset:3px}
+.clan-menu-card>span{
+  position:absolute;
+  top:18px;
+  left:18px;
+  width:52px;
+  height:52px;
+  display:grid;
+  place-items:center;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.10);
+  background:linear-gradient(145deg,rgba(126,102,255,.22),rgba(255,255,255,.035));
+  box-shadow:0 8px 20px rgba(0,0,0,.18);
+  font-size:25px;
+}
+.clan-menu-card strong{position:relative;font-size:18px;letter-spacing:-.2px}
+.clan-menu-card small{position:relative;max-width:290px;color:#9da6c2;font-size:12px;line-height:1.45}
+.clan-menu-card:nth-child(2){border-color:rgba(74,203,255,.18);background:radial-gradient(circle at 100% 0,rgba(52,195,255,.16),transparent 42%),linear-gradient(145deg,rgba(20,34,52,.96),rgba(8,11,24,.98))}
+.clan-menu-card:nth-child(2)>span{background:linear-gradient(145deg,rgba(50,194,255,.20),rgba(255,255,255,.035))}
+.clan-menu-card:nth-child(3){border-color:rgba(255,193,75,.20);background:radial-gradient(circle at 100% 0,rgba(255,184,58,.15),transparent 42%),linear-gradient(145deg,rgba(43,33,28,.96),rgba(8,11,24,.98))}
+.clan-menu-card:nth-child(3)>span{background:linear-gradient(145deg,rgba(255,190,67,.20),rgba(255,255,255,.035))}
+.clan-menu-card:nth-child(4){border-color:rgba(92,233,175,.18);background:radial-gradient(circle at 100% 0,rgba(60,220,158,.14),transparent 42%),linear-gradient(145deg,rgba(20,39,39,.96),rgba(8,11,24,.98))}
+.clan-menu-card:nth-child(4)>span{background:linear-gradient(145deg,rgba(70,220,163,.18),rgba(255,255,255,.035))}
+@media(max-width:700px){
+  .clan-menu-grid{grid-template-columns:1fr;gap:11px}
+  .clan-menu-card{min-height:126px;padding:18px;border-radius:19px}
+  .clan-menu-card>span{top:16px;left:16px;width:48px;height:48px;font-size:23px}
+  .clan-menu-card::after{top:16px;right:16px}
+  .clan-menu-card strong{font-size:17px}
+  .clan-menu-card small{font-size:11px}
+}
