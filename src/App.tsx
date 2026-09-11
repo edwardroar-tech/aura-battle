@@ -182,11 +182,12 @@ useEffect(()=>{
  },[user])
 
 async function sendPushEvent(targetUid:string,event:string,refId:string){
-  if(!user||!targetUid||targetUid===user.uid)return
+  if(!user||!targetUid||targetUid===user.uid)return null
   try{
     const idToken=await user.getIdToken()
-    await fetch('/api/push/notify',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${idToken}`},body:JSON.stringify({event,targetUid,refId})})
-  }catch(error){console.warn('Push event delivery skipped:',error)}
+    const response=await fetch('/api/push/notify',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${idToken}`},body:JSON.stringify({event,targetUid,refId})})
+    return await response.json().catch(()=>({ok:response.ok}))
+  }catch(error){console.warn('Push event delivery skipped:',error);return {ok:false,error:'network-error'}}
 }
 
 async function enableNotifications(){
@@ -239,8 +240,8 @@ useEffect(()=>{ if(!user)return; setChatLoading(true); setChatMsg(''); const q=q
  useEffect(()=>{ if(clanMenu==='mine'&&myClanId){ const mine=clans.find(c=>c.id===myClanId); if(mine)setSelectedClan(mine) } },[clanMenu,myClanId,clans])
  useEffect(()=>{ if(!user){setClanSearchResults(null);setClanSearching(false);return} const term=clanSearch.trim().toLowerCase(); if(!term){setClanSearchResults(null);setClanSearching(false);return} const timer=setTimeout(async()=>{setClanSearching(true); try{ const end=term+'\uf8ff'; const [nameSnap,tagSnap]=await Promise.all([getDocs(query(collection(db,'clans'),where('nameLower','>=',term),where('nameLower','<=',end),limit(50))),getDocs(query(collection(db,'clans'),where('tagLower','>=',term),where('tagLower','<=',end),limit(50)))]); const merged=new Map<string,Clan>(); [...nameSnap.docs,...tagSnap.docs].forEach(d=>merged.set(d.id,{id:d.id,...d.data()} as Clan)); const local=clans.filter(c=>`${c.name||''} ${c.tag||''}`.toLowerCase().includes(term)); local.forEach(c=>merged.set(c.id,c)); setClanSearchResults([...merged.values()].sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')))); }catch(error){console.error('Clan search error:',error); const fallback=clans.filter(c=>`${c.name||''} ${c.tag||''}`.toLowerCase().includes(term)); setClanSearchResults(fallback); } finally{setClanSearching(false)} },250); return()=>clearTimeout(timer) },[user,clanSearch,clans])
  useEffect(()=>{ if(!user){setMyClanRequests([]);return} const q=query(collection(db,'clanJoinRequests'),where('requesterId','==',user.uid),limit(50)); return onSnapshot(q,s=>{setMyClanRequests(s.docs.map(d=>({id:d.id,...d.data()} as ClanJoinRequest)))},e=>{console.error('Clan request load error:',e);setMyClanRequests([])}) },[user])
- useEffect(()=>{ if(!user){setClanInvitesSent([]);return} const q=query(collection(db,'clanJoinRequests'),where('requesterId','==',user.uid),limit(100)); return onSnapshot(q,s=>setClanInvitesSent(s.docs.map(d=>({id:d.id,...d.data(),senderId:(d.data() as any).requesterId} as ClanInvite)).filter(r=>r.status==='pending'&&r.kind==='invite')),e=>{console.error('Clan sent invite load error:',e);setClanInvitesSent([])}) },[user])
- useEffect(()=>{ if(!user){setUnreadClanInvites([]);return} const q=query(collection(db,'clanJoinRequests'),where('receiverId','==',user.uid),limit(50)); return onSnapshot(q,s=>{const rows=s.docs.map(d=>({id:d.id,...d.data(),senderId:(d.data() as any).requesterId} as ClanInvite)).filter(r=>r.status==='pending'&&r.kind==='invite'); rows.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)); const unread=rows.filter(r=>localStorage.getItem(`auraClanInviteRead:${user.uid}:${r.id}`)!=='1'); setUnreadClanInvites(unread)},e=>{console.error('Clan invite notification load error:',e);setUnreadClanInvites([])}) },[user])
+ useEffect(()=>{ if(!user){setClanInvitesSent([]);return} const q=query(collection(db,'clanInvites'),where('senderId','==',user.uid),limit(100)); return onSnapshot(q,s=>setClanInvitesSent(s.docs.map(d=>({id:d.id,...d.data()} as ClanInvite)).filter(r=>r.status==='pending')),e=>{console.error('Clan sent invite load error:',e);setClanInvitesSent([])}) },[user])
+ useEffect(()=>{ if(!user){setUnreadClanInvites([]);return} const q=query(collection(db,'clanInvites'),where('receiverId','==',user.uid),limit(100)); return onSnapshot(q,s=>{const rows=s.docs.map(d=>({id:d.id,...d.data()} as ClanInvite)).filter(r=>r.status==='pending'); rows.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)); const unread=rows.filter(r=>localStorage.getItem(`auraClanInviteRead:${user.uid}:${r.id}`)!=='1'); setUnreadClanInvites(unread)},e=>{console.error('Clan invite notification load error:',e);setUnreadClanInvites([])}) },[user])
  useEffect(()=>{
   if(!user){setUnreadClanJoinRequests([]);return}
   let requestUnsub=()=>{}
@@ -1163,9 +1164,8 @@ useEffect(()=>{
     await updateDoc(doc(db,'clans',clan.id),updates)
     // Limpia una invitación pendiente antigua para que, si el jugador vuelve a ser invitado,
     // el botón no aparezca falsamente como "📨 Enviada".
-    const inviteRef=doc(db,'clanJoinRequests',`${clan.id}_invite_${memberId}`)
-    const inviteSnap=await getDoc(inviteRef)
-    if(inviteSnap.exists() && inviteSnap.data().status==='pending') await deleteDoc(inviteRef)
+    const inviteRefs=[doc(db,'clanInvites',`${clan.id}_${memberId}`),doc(db,'clanJoinRequests',`${clan.id}_invite_${memberId}`)]
+    for(const inviteRef of inviteRefs){const inviteSnap=await getDoc(inviteRef);if(inviteSnap.exists()&&inviteSnap.data().status==='pending')await deleteDoc(inviteRef)}
     setClanMsg('❌ Miembro expulsado del clan.')
   }catch(error:any){console.error('Kick clan member error:',error);setClanMsg(`❌ No se pudo expulsar al miembro${error?.code?` (${error.code})`:''}.`)}
  }
@@ -1179,65 +1179,59 @@ useEffect(()=>{
   if(!admin||clan.members?.includes(friend.id)||friend.id===user.uid)return
   if(clanInvitingFriendId===friend.id)return
   setClanInvitingFriendId(friend.id)
-  const requestId=`${clan.id}_invite_${friend.id}`; const ref=doc(db,'clanJoinRequests',requestId)
+  const inviteId=`${clan.id}_${friend.id}`; const ref=doc(db,'clanInvites',inviteId)
   try{
-    const snap=await getDoc(ref)
-    if(snap.exists()){
-      const data=snap.data()
-      if(data.status==='pending'&&data.kind==='invite'&&data.requesterId===user.uid&&data.receiverId===friend.id){
-        setClanMsg(`ℹ️ Ya hay una invitación pendiente para ${friend.name}.`)
-        return
-      }
-      if(data.status!=='pending' || data.kind==='invite') await deleteDoc(ref)
+    const existing=await getDoc(ref)
+    if(existing.exists()){
+      const data=existing.data()
+      if(data.status==='pending'&&data.senderId===user.uid&&data.receiverId===friend.id){setClanMsg(`ℹ️ Ya hay una invitación pendiente para ${friend.name}.`);return}
+      await deleteDoc(ref)
     }
-    // Compatibilidad con la versión anterior: si existe el ID antiguo de invitación,
-    // elimínalo solo cuando realmente sea una invitación del líder actual. Nunca borres
-    // una solicitud de ingreso (kind:'join') creada por el jugador.
-    const legacyRef=doc(db,'clanJoinRequests',`${clan.id}_${friend.id}`)
-    const legacySnap=await getDoc(legacyRef)
-    if(legacySnap.exists()){
-      const legacy=legacySnap.data()
-      if(legacy.kind==='invite'&&legacy.status==='pending'&&legacy.requesterId===user.uid&&legacy.receiverId===friend.id){
-        await deleteDoc(legacyRef)
-      }
+    await setDoc(ref,{clanId:clan.id,senderId:user.uid,senderName:user.displayName||'Jugador',receiverId:friend.id,clanName:clan.name,clanTag:clan.tag||'',kind:'invite',status:'pending',createdAt:serverTimestamp()})
+    const push=await sendPushEvent(friend.id,'clan_invite',inviteId)
+    if(push?.ok===false)console.warn('Clan invite push unavailable:',push)
+    setClanInvitesSent(prev=>[...prev.filter(x=>x.id!==inviteId),{id:inviteId,clanId:clan.id,senderId:user.uid,senderName:user.displayName||'Jugador',receiverId:friend.id,clanName:clan.name,clanTag:clan.tag||'',kind:'invite',status:'pending'} as ClanInvite])
+    if(push?.ok===false){
+      const reason=String(push?.error||'push-unavailable')
+      setClanMsg(`📨 Invitación guardada para ${friend.name}. ⚠️ La notificación no pudo enviarse (${reason}).`)
+    }else{
+      setClanMsg(`📨 Invitación enviada a ${friend.name}.`)
     }
-    const invite:ClanInvite={id:requestId,clanId:clan.id,senderId:user.uid,senderName:user.displayName||'Jugador',receiverId:friend.id,clanName:clan.name,clanTag:clan.tag||'',status:'pending',createdAt:serverTimestamp() as any}
-    await setDoc(ref,{clanId:clan.id,requesterId:user.uid,requesterName:user.displayName||'Jugador',receiverId:friend.id,clanName:clan.name,kind:'invite',status:'pending',createdAt:serverTimestamp()})
-    void sendPushEvent(friend.id,'clan_invite',requestId)
-    setClanInvitesSent(prev=>[...prev.filter(x=>x.id!==requestId),invite])
-    setClanMsg(`📨 Invitación enviada a ${friend.name}.`)
-  }catch(error:any){
-    console.error('Invite to clan error:',error)
-    setClanMsg(`❌ No se pudo enviar la invitación${error?.code?` (${error.code})`:''}.`)
-  }finally{
-    setClanInvitingFriendId(null)
-  }
+  }catch(error:any){console.error('Invite to clan error:',error);setClanMsg(`❌ No se pudo enviar la invitación${error?.code?` (${error.code})`:''}.`)}
+  finally{setClanInvitingFriendId(null)}
+ }
+ async function cancelClanInvite(clan:Clan, friendId:string){
+  if(!user)return
+  const admin=user.uid===clan.owner||clan.coLeader===user.uid
+  if(!admin)return
+  try{
+    const ref=doc(db,'clanInvites',`${clan.id}_${friendId}`); const snap=await getDoc(ref)
+    if(snap.exists()&&snap.data().senderId===user.uid&&snap.data().receiverId===friendId&&snap.data().status==='pending'){
+      await deleteDoc(ref); setClanInvitesSent(prev=>prev.filter(x=>x.id!==ref.id)); setClanMsg('↩️ Invitación cancelada.')
+    }
+  }catch(error:any){console.error('Cancel clan invite error:',error);setClanMsg(`❌ No se pudo cancelar la invitación${error?.code?` (${error.code})`:''}.`)}
  }
  async function acceptClanInvite(r:ClanInvite){
   if(!user)return
   try{
-    const clanRef=doc(db,'clans',r.clanId); const reqRef=doc(db,'clanJoinRequests',r.id)
+    const clanRef=doc(db,'clans',r.clanId); const inviteRef=doc(db,'clanInvites',r.id)
     if(myClanId&&myClanId!==r.clanId){setClanMsg('⚠️ Ya perteneces a otro clan.');return}
-    let acceptedClan: any = null
+    let acceptedClan:any=null
     await runTransaction(db,async tx=>{
-      const reqSnap=await tx.get(reqRef); const clanSnap=await tx.get(clanRef)
-      if(!reqSnap.exists()||!clanSnap.exists())throw new Error('invite-missing')
-      const req=reqSnap.data(); const data=clanSnap.data()
-      if(req.clanId!==r.clanId||req.kind!=='invite'||req.receiverId!==user.uid||req.requesterId===user.uid||req.status!=='pending')throw new Error('invite-not-pending')
-      const members=Array.isArray(data.members)?data.members:[]
+      const inviteSnap=await tx.get(inviteRef); const clanSnap=await tx.get(clanRef)
+      if(!inviteSnap.exists()||!clanSnap.exists())throw new Error('invite-missing')
+      const invite=inviteSnap.data(); const data=clanSnap.data(); const members=Array.isArray(data.members)?data.members:[]
+      if(invite.clanId!==r.clanId||invite.senderId===user.uid||invite.receiverId!==user.uid||invite.kind!=='invite'||invite.status!=='pending')throw new Error('invite-not-pending')
       if(members.length>=1000&&!members.includes(user.uid))throw new Error('clan-full')
       if(!members.includes(user.uid))tx.update(clanRef,{members:arrayUnion(user.uid)})
-      tx.update(reqRef,{status:'accepted',reviewedAt:serverTimestamp()})
-      acceptedClan={...data,id:r.clanId}
+      tx.update(inviteRef,{status:'accepted',reviewedAt:serverTimestamp()}); acceptedClan={...data,id:r.clanId}
     })
-    setMyClanId(r.clanId)
-    setSelectedClan(acceptedClan||selectedClan)
-    setUnreadClanInvites(prev=>prev.filter(x=>x.id!==r.id)); setClanInvitesSent(prev=>prev.filter(x=>x.id!==r.id)); localStorage.setItem(`auraClanInviteRead:${user.uid}:${r.id}`,'1'); setClanMsg(`✅ Te uniste a [${String(acceptedClan?.tag||r.clanTag||'CLAN')}] ${String(acceptedClan?.name||r.clanName||'Clan')}.`)
+    setMyClanId(r.clanId); setSelectedClan(acceptedClan||selectedClan); setUnreadClanInvites(prev=>prev.filter(x=>x.id!==r.id)); localStorage.setItem(`auraClanInviteRead:${user.uid}:${r.id}`,'1'); setClanMsg(`✅ Te uniste a [${String(acceptedClan?.tag||r.clanTag||'CLAN')}] ${String(acceptedClan?.name||r.clanName||'Clan')}.`)
   }catch(error:any){console.error('Accept clan invite error:',error);const code=error?.code||error?.message||'';setClanMsg(`❌ No se pudo aceptar la invitación${code?` (${code})`:''}.`)}
  }
  async function declineClanInvite(r:ClanInvite){
   if(!user)return
-  try{await updateDoc(doc(db,'clanJoinRequests',r.id),{status:'rejected',reviewedAt:serverTimestamp()});setUnreadClanInvites(prev=>prev.filter(x=>x.id!==r.id));localStorage.setItem(`auraClanInviteRead:${user.uid}:${r.id}`,'1');setClanMsg('Invitación de clan rechazada.')}catch(error:any){console.error('Decline clan invite error:',error);setClanMsg(`❌ No se pudo rechazar la invitación${error?.code?` (${error.code})`:''}.`)}
+  try{await updateDoc(doc(db,'clanInvites',r.id),{status:'rejected',reviewedAt:serverTimestamp()});setUnreadClanInvites(prev=>prev.filter(x=>x.id!==r.id));localStorage.setItem(`auraClanInviteRead:${user.uid}:${r.id}`,'1');setClanMsg('Invitación de clan rechazada.')}catch(error:any){console.error('Decline clan invite error:',error);setClanMsg(`❌ No se pudo rechazar la invitación${error?.code?` (${error.code})`:''}.`)}
  }
  async function leaveClan(clan:Clan){
   if(!user)return
@@ -1338,9 +1332,9 @@ useEffect(()=>{
        {selectedClanIsAdmin&&<div className="clan-admin-invite">
          <h3>➕ Invitar amigos al clan</h3>
          {friends.filter(f=>!selectedClan.members?.includes(f.id)).length ? friends.filter(f=>!selectedClan.members?.includes(f.id)).map(f=>{
-           const sent=clanInvitesSent.some(r=>r.clanId===selectedClan.id&&r.receiverId===f.id&&r.status==='pending'&&r.kind==='invite'&&r.id===`${selectedClan.id}_invite_${f.id}`);
+           const sent=clanInvitesSent.some(r=>r.clanId===selectedClan.id&&r.receiverId===f.id&&r.status==='pending');
            const sending=clanInvitingFriendId===f.id;
-           return <div className="clan-invite-row" key={f.id}><span>👤 {f.name}</span><button type="button" className={sent?'clan-invite-sent':''} disabled={sent||sending} onClick={()=>void inviteFriendToClan(selectedClan,f)}>{sending?'⏳ Enviando…':sent?'📨 Enviada':'➕ Invitar'}</button></div>;
+           return <div className="clan-invite-row" key={f.id}><span>👤 {f.name}</span>{sent?<button type="button" className="clan-invite-sent" disabled={sending} onClick={()=>void cancelClanInvite(selectedClan,f.id)}>{sending?'⏳ Procesando…':'↩️ Cancelar'}</button>:<button type="button" disabled={sending} onClick={()=>void inviteFriendToClan(selectedClan,f)}>{sending?'⏳ Enviando…':'➕ Invitar'}</button>}</div>;
          }) : <small>No tienes amigos disponibles para invitar.</small>}
        </div>}
 

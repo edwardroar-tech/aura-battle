@@ -11,3 +11,9 @@ La app registra el token FCM desde Ajustes → Notificaciones. La clave pública
 
 ## Android
 Esta versión deja FCM Web y el servidor de envío preparados. El repositorio todavía no contiene un proyecto Android nativo/Capacitor; por eso el push nativo de un APK WebView con la app totalmente cerrada requiere la siguiente integración Android.
+
+## Invitaciones de clan v5.174.3
+Las invitaciones de clan usan la colección `clanInvites/{clanId}_{receiverId}`.
+Debes desplegar `firestore.rules` junto con el frontend.
+
+Para notificaciones push en Android/web, el servidor de Render debe tener configurada la variable `FIREBASE_SERVICE_ACCOUNT_JSON` con la cuenta de servicio del mismo proyecto Firebase. Además, cada dispositivo receptor debe activar las notificaciones desde Ajustes.

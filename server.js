@@ -294,9 +294,9 @@ app.post('/api/push/notify', async (req, res) => {
       if (!snap.exists || d.senderId !== decoded.uid || d.receiverId !== targetUid || d.status !== 'pending') return res.status(403).json({ ok: false, error: 'event-not-authorized' })
       title = '⚔️ Invitación de batalla'; body = `${d.senderName || 'Un jugador'} te invitó a una batalla.`; data = { type: event, url: '/?tab=battle', roomCode: String(d.roomCode || '') }
     } else if (event === 'clan_invite') {
-      const snap = await ref('clanJoinRequests', refId).get(); const d = snap.data() || {}
-      if (!snap.exists || d.requesterId !== decoded.uid || d.receiverId !== targetUid || d.kind !== 'invite' || d.status !== 'pending') return res.status(403).json({ ok: false, error: 'event-not-authorized' })
-      title = '🛡️ Invitación de clan'; body = `${d.requesterName || 'Un jugador'} te invitó a ${d.clanName || 'un clan'}.`; data = { type: event, url: '/?tab=clans', clanId: String(d.clanId || '') }
+      const snap = await ref('clanInvites', refId).get(); const d = snap.data() || {}
+      if (!snap.exists || d.senderId !== decoded.uid || d.receiverId !== targetUid || d.kind !== 'invite' || d.status !== 'pending') return res.status(403).json({ ok: false, error: 'event-not-authorized' })
+      title = '🛡️ Invitación de clan'; body = `${d.senderName || 'Un jugador'} te invitó a ${d.clanName || 'un clan'}.`; data = { type: event, url: '/?tab=clans', clanId: String(d.clanId || '') }
     } else if (event === 'clan_join_request') {
       const snap = await ref('clanJoinRequests', refId).get(); const d = snap.data() || {}
       const clanSnap = d.clanId ? await ref('clans', String(d.clanId)).get() : null; const clan = clanSnap?.data() || {}
