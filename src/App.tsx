@@ -1108,7 +1108,7 @@ useEffect(()=>{
   if(!user)return
   if(clan.members?.includes(user.uid)){setClanMsg('ℹ️ Ya perteneces a este clan.');return}
   if(myClanId){setClanMsg('⚠️ Ya perteneces a un clan. Sal de tu clan actual antes de solicitar otro.');return}
-  const requestId=`${clan.id}_${user.uid}`; const ref=doc(db,'clanJoinRequests',requestId)
+  const requestId=`${clan.id}_join_${user.uid}`; const ref=doc(db,'clanJoinRequests',requestId)
   try{
     const snap=await getDoc(ref)
     if(snap.exists()){
@@ -1127,7 +1127,7 @@ useEffect(()=>{
     }
     // Escritura simple y determinista: la regla CREATE de clanJoinRequests
     // solo necesita validar que requesterId coincida con el usuario autenticado.
-    await setDoc(ref,{clanId:String(clan.id),requesterId:String(user.uid),requesterName:String(user.displayName||'Jugador'),clanName:String(clan.name||''),kind:'join',status:'pending',createdAt:serverTimestamp()})
+    await setDoc(ref,{clanId:String(clan.id),requesterId:String(user.uid),requesterName:String(user.displayName||'Jugador'),receiverId:String(clan.owner||''),clanName:String(clan.name||''),kind:'join',status:'pending',createdAt:serverTimestamp()})
     void Promise.all([clan.owner, clan.coLeader].filter((id): id is string=>!!id&&id!==user.uid).map(id=>sendPushEvent(id,'clan_join_request',requestId)))
     setClanMsg(`✅ Solicitud enviada a [${clan.tag||'CLAN'}] ${clan.name}.`)
   }catch(error:any){
@@ -1163,7 +1163,7 @@ useEffect(()=>{
     await updateDoc(doc(db,'clans',clan.id),updates)
     // Limpia una invitación pendiente antigua para que, si el jugador vuelve a ser invitado,
     // el botón no aparezca falsamente como "📨 Enviada".
-    const inviteRef=doc(db,'clanJoinRequests',`${clan.id}_${memberId}`)
+    const inviteRef=doc(db,'clanJoinRequests',`${clan.id}_invite_${memberId}`)
     const inviteSnap=await getDoc(inviteRef)
     if(inviteSnap.exists() && inviteSnap.data().status==='pending') await deleteDoc(inviteRef)
     setClanMsg('❌ Miembro expulsado del clan.')
@@ -1179,7 +1179,7 @@ useEffect(()=>{
   if(!admin||clan.members?.includes(friend.id)||friend.id===user.uid)return
   if(clanInvitingFriendId===friend.id)return
   setClanInvitingFriendId(friend.id)
-  const requestId=`${clan.id}_${friend.id}`; const ref=doc(db,'clanJoinRequests',requestId)
+  const requestId=`${clan.id}_invite_${friend.id}`; const ref=doc(db,'clanJoinRequests',requestId)
   try{
     const snap=await getDoc(ref)
     if(snap.exists()){
@@ -1188,7 +1188,18 @@ useEffect(()=>{
         setClanMsg(`ℹ️ Ya hay una invitación pendiente para ${friend.name}.`)
         return
       }
-      await deleteDoc(ref)
+      if(data.status!=='pending' || data.kind==='invite') await deleteDoc(ref)
+    }
+    // Compatibilidad con la versión anterior: si existe el ID antiguo de invitación,
+    // elimínalo solo cuando realmente sea una invitación del líder actual. Nunca borres
+    // una solicitud de ingreso (kind:'join') creada por el jugador.
+    const legacyRef=doc(db,'clanJoinRequests',`${clan.id}_${friend.id}`)
+    const legacySnap=await getDoc(legacyRef)
+    if(legacySnap.exists()){
+      const legacy=legacySnap.data()
+      if(legacy.kind==='invite'&&legacy.status==='pending'&&legacy.requesterId===user.uid&&legacy.receiverId===friend.id){
+        await deleteDoc(legacyRef)
+      }
     }
     const invite:ClanInvite={id:requestId,clanId:clan.id,senderId:user.uid,senderName:user.displayName||'Jugador',receiverId:friend.id,clanName:clan.name,clanTag:clan.tag||'',status:'pending',createdAt:serverTimestamp() as any}
     await setDoc(ref,{clanId:clan.id,requesterId:user.uid,requesterName:user.displayName||'Jugador',receiverId:friend.id,clanName:clan.name,kind:'invite',status:'pending',createdAt:serverTimestamp()})
@@ -1327,7 +1338,7 @@ useEffect(()=>{
        {selectedClanIsAdmin&&<div className="clan-admin-invite">
          <h3>➕ Invitar amigos al clan</h3>
          {friends.filter(f=>!selectedClan.members?.includes(f.id)).length ? friends.filter(f=>!selectedClan.members?.includes(f.id)).map(f=>{
-           const sent=clanInvitesSent.some(r=>r.clanId===selectedClan.id&&r.receiverId===f.id&&r.status==='pending');
+           const sent=clanInvitesSent.some(r=>r.clanId===selectedClan.id&&r.receiverId===f.id&&r.status==='pending'&&r.kind==='invite'&&r.id===`${selectedClan.id}_invite_${f.id}`);
            const sending=clanInvitingFriendId===f.id;
            return <div className="clan-invite-row" key={f.id}><span>👤 {f.name}</span><button type="button" className={sent?'clan-invite-sent':''} disabled={sent||sending} onClick={()=>void inviteFriendToClan(selectedClan,f)}>{sending?'⏳ Enviando…':sent?'📨 Enviada':'➕ Invitar'}</button></div>;
          }) : <small>No tienes amigos disponibles para invitar.</small>}
