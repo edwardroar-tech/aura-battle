@@ -906,10 +906,9 @@ useEffect(()=>{
   const requestId=`${user.uid}_${f.id}`
   if(sentFriendRequests.some(r=>r.id===requestId&&r.status==='pending')){setFriendMsg(`ℹ️ Ya enviaste una solicitud a ${f.name}.`);return}
   try{
-    // Si quedó una solicitud histórica (rechazada/aceptada), se elimina antes de crear una nueva.
+    // No leemos antes de crear: las reglas pueden rechazar getDoc sobre un documento inexistente.
+    // setDoc está autorizado para el remitente y reemplaza cualquier solicitud histórica.
     const existingRef=doc(db,'friendRequests',requestId)
-    const existing=await getDoc(existingRef)
-    if(existing.exists() && String(existing.data().status||'')!=='pending') await deleteDoc(existingRef)
     await setDoc(existingRef,{
       senderId:user.uid,
       senderName:user.displayName||'Jugador',
@@ -1201,15 +1200,8 @@ useEffect(()=>{
   setClanInvitingFriendId(friend.id)
   const requestId=`${clan.id}_${friend.id}`; const ref=doc(db,'clanInvites',requestId)
   try{
-    const snap=await getDoc(ref)
-    if(snap.exists()){
-      const data=snap.data()
-      if(data.status==='pending'&&data.kind==='invite'&&data.requesterId===user.uid&&data.receiverId===friend.id){
-        setClanMsg(`ℹ️ Ya hay una invitación pendiente para ${friend.name}.`)
-        return
-      }
-      await deleteDoc(ref)
-    }
+    // No leemos antes de crear: el CREATE de Firestore debe funcionar aunque el ID aún no exista.
+    // Reutilizar el mismo ID permite volver a invitar tras cancelar o rechazar.
     const invite:ClanInvite={id:requestId,clanId:clan.id,senderId:user.uid,senderName:user.displayName||'Jugador',receiverId:friend.id,clanName:clan.name,clanTag:clan.tag||'',kind:'invite',status:'pending',createdAt:serverTimestamp() as any}
     await setDoc(ref,{clanId:clan.id,senderId:user.uid,senderName:user.displayName||'Jugador',receiverId:friend.id,clanName:clan.name,clanTag:clan.tag||'',kind:'invite',status:'pending',createdAt:serverTimestamp()})
     void sendPushEvent(friend.id,'clan_invite',requestId)
