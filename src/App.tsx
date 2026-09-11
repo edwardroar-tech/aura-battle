@@ -16,7 +16,7 @@ type BattleInvite = {id:string; senderId:string; senderName:string; receiverId:s
 type ChatMsg = {id:string; uid:string; name:string; text:string; conversationId?:string; participants?:string[]; createdAt?:any; type?:'message'|'battleInvite'; roomCode?:string; receiverId?:string; status?:'pending'|'accepted'|'declined'}
 type Clan = {id:string; name:string; owner:string; members:string[]; tag?:string; description?:string; visibility?:'public'|'private'; coLeader?:string; createdAt?:any}
 type ClanJoinRequest = {id:string; clanId:string; requesterId:string; requesterName:string; receiverId?:string; clanName?:string; kind?:'join'|'invite'; status:'pending'|'accepted'|'rejected'; createdAt?:any}
-type ClanInvite = {id:string; clanId:string; senderId:string; senderName:string; receiverId:string; clanName?:string; clanTag?:string; status:'pending'|'accepted'|'declined'; createdAt?:any}
+type ClanInvite = {id:string; clanId:string; senderId:string; senderName:string; receiverId:string; clanName?:string; clanTag?:string; kind?:'join'|'invite'; status:'pending'|'accepted'|'declined'|'rejected'; createdAt?:any}
 type ClanMember = {id:string; name:string; aura:number}
 type ClanChatMsg = {id:string; clanId:string; uid:string; name:string; text:string; createdAt?:any}
 
