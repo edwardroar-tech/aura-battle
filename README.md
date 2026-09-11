@@ -1,4 +1,4 @@
-# Aura farming battles v5.174
+# Aura farming battles v5.174.3
 
 ## Fase 3 — Notificaciones
 
@@ -20,5 +20,5 @@ El proyecto actual no contiene todavía la capa Android nativa; la recepción na
 Cámaras verticales lado a lado, medidor de Aura bajo cada cámara y cuenta regresiva autoritativa de 5 segundos antes de los 15 segundos de batalla.
 
 
-## v5.174 — Fase 5
+## v5.174.3 — Fase 5
 Batallas de cámara con dos feeds verticales lado a lado, medidores de Aura en vivo y cuenta regresiva de 5 segundos antes de los 15 segundos de combate.

@@ -1,6 +1,6 @@
 # Fase 5 — Batallas de cámara
 
-## v5.174
+## v5.174.3
 
 - Dos cámaras siempre lado a lado, incluso en móvil.
 - Formato vertical 9:16 para mostrar más cuerpo cuando el jugador se aleja.
