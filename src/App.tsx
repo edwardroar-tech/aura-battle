@@ -182,12 +182,11 @@ useEffect(()=>{
  },[user])
 
 async function sendPushEvent(targetUid:string,event:string,refId:string){
-  if(!user||!targetUid||targetUid===user.uid)return null
+  if(!user||!targetUid||targetUid===user.uid)return
   try{
     const idToken=await user.getIdToken()
-    const response=await fetch('/api/push/notify',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${idToken}`},body:JSON.stringify({event,targetUid,refId})})
-    return await response.json().catch(()=>({ok:response.ok}))
-  }catch(error){console.warn('Push event delivery skipped:',error);return {ok:false,error:'network-error'}}
+    await fetch('/api/push/notify',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${idToken}`},body:JSON.stringify({event,targetUid,refId})})
+  }catch(error){console.warn('Push event delivery skipped:',error)}
 }
 
 async function enableNotifications(){
@@ -240,8 +239,8 @@ useEffect(()=>{ if(!user)return; setChatLoading(true); setChatMsg(''); const q=q
  useEffect(()=>{ if(clanMenu==='mine'&&myClanId){ const mine=clans.find(c=>c.id===myClanId); if(mine)setSelectedClan(mine) } },[clanMenu,myClanId,clans])
  useEffect(()=>{ if(!user){setClanSearchResults(null);setClanSearching(false);return} const term=clanSearch.trim().toLowerCase(); if(!term){setClanSearchResults(null);setClanSearching(false);return} const timer=setTimeout(async()=>{setClanSearching(true); try{ const end=term+'\uf8ff'; const [nameSnap,tagSnap]=await Promise.all([getDocs(query(collection(db,'clans'),where('nameLower','>=',term),where('nameLower','<=',end),limit(50))),getDocs(query(collection(db,'clans'),where('tagLower','>=',term),where('tagLower','<=',end),limit(50)))]); const merged=new Map<string,Clan>(); [...nameSnap.docs,...tagSnap.docs].forEach(d=>merged.set(d.id,{id:d.id,...d.data()} as Clan)); const local=clans.filter(c=>`${c.name||''} ${c.tag||''}`.toLowerCase().includes(term)); local.forEach(c=>merged.set(c.id,c)); setClanSearchResults([...merged.values()].sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')))); }catch(error){console.error('Clan search error:',error); const fallback=clans.filter(c=>`${c.name||''} ${c.tag||''}`.toLowerCase().includes(term)); setClanSearchResults(fallback); } finally{setClanSearching(false)} },250); return()=>clearTimeout(timer) },[user,clanSearch,clans])
  useEffect(()=>{ if(!user){setMyClanRequests([]);return} const q=query(collection(db,'clanJoinRequests'),where('requesterId','==',user.uid),limit(50)); return onSnapshot(q,s=>{setMyClanRequests(s.docs.map(d=>({id:d.id,...d.data()} as ClanJoinRequest)))},e=>{console.error('Clan request load error:',e);setMyClanRequests([])}) },[user])
- useEffect(()=>{ if(!user){setClanInvitesSent([]);return} const q=query(collection(db,'clanInvites'),where('senderId','==',user.uid),limit(100)); return onSnapshot(q,s=>setClanInvitesSent(s.docs.map(d=>({id:d.id,...d.data()} as ClanInvite)).filter(r=>r.status==='pending')),e=>{console.error('Clan sent invite load error:',e);setClanInvitesSent([])}) },[user])
- useEffect(()=>{ if(!user){setUnreadClanInvites([]);return} const q=query(collection(db,'clanInvites'),where('receiverId','==',user.uid),limit(100)); return onSnapshot(q,s=>{const rows=s.docs.map(d=>({id:d.id,...d.data()} as ClanInvite)).filter(r=>r.status==='pending'); rows.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)); const unread=rows.filter(r=>localStorage.getItem(`auraClanInviteRead:${user.uid}:${r.id}`)!=='1'); setUnreadClanInvites(unread)},e=>{console.error('Clan invite notification load error:',e);setUnreadClanInvites([])}) },[user])
+ useEffect(()=>{ if(!user){setClanInvitesSent([]);return} const q=query(collection(db,'clanInvites'),where('senderId','==',user.uid),limit(100)); return onSnapshot(q,s=>setClanInvitesSent(s.docs.map(d=>({id:d.id,...d.data()} as ClanInvite)).filter(r=>r.status==='pending'&&r.kind==='invite')),e=>{console.error('Clan sent invite load error:',e);setClanInvitesSent([])}) },[user])
+ useEffect(()=>{ if(!user){setUnreadClanInvites([]);return} const q=query(collection(db,'clanInvites'),where('receiverId','==',user.uid),limit(50)); return onSnapshot(q,s=>{const rows=s.docs.map(d=>({id:d.id,...d.data()} as ClanInvite)).filter(r=>r.status==='pending'&&r.kind==='invite'); rows.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)); const unread=rows.filter(r=>localStorage.getItem(`auraClanInviteRead:${user.uid}:${r.id}`)!=='1'); setUnreadClanInvites(unread)},e=>{console.error('Clan invite notification load error:',e);setUnreadClanInvites([])}) },[user])
  useEffect(()=>{
   if(!user){setUnreadClanJoinRequests([]);return}
   let requestUnsub=()=>{}
@@ -1109,7 +1108,7 @@ useEffect(()=>{
   if(!user)return
   if(clan.members?.includes(user.uid)){setClanMsg('ℹ️ Ya perteneces a este clan.');return}
   if(myClanId){setClanMsg('⚠️ Ya perteneces a un clan. Sal de tu clan actual antes de solicitar otro.');return}
-  const requestId=`${clan.id}_join_${user.uid}`; const ref=doc(db,'clanJoinRequests',requestId)
+  const requestId=`${clan.id}_${user.uid}`; const ref=doc(db,'clanJoinRequests',requestId)
   try{
     const snap=await getDoc(ref)
     if(snap.exists()){
@@ -1128,7 +1127,7 @@ useEffect(()=>{
     }
     // Escritura simple y determinista: la regla CREATE de clanJoinRequests
     // solo necesita validar que requesterId coincida con el usuario autenticado.
-    await setDoc(ref,{clanId:String(clan.id),requesterId:String(user.uid),requesterName:String(user.displayName||'Jugador'),receiverId:String(clan.owner||''),clanName:String(clan.name||''),kind:'join',status:'pending',createdAt:serverTimestamp()})
+    await setDoc(ref,{clanId:String(clan.id),requesterId:String(user.uid),requesterName:String(user.displayName||'Jugador'),clanName:String(clan.name||''),kind:'join',status:'pending',createdAt:serverTimestamp()})
     void Promise.all([clan.owner, clan.coLeader].filter((id): id is string=>!!id&&id!==user.uid).map(id=>sendPushEvent(id,'clan_join_request',requestId)))
     setClanMsg(`✅ Solicitud enviada a [${clan.tag||'CLAN'}] ${clan.name}.`)
   }catch(error:any){
@@ -1164,8 +1163,9 @@ useEffect(()=>{
     await updateDoc(doc(db,'clans',clan.id),updates)
     // Limpia una invitación pendiente antigua para que, si el jugador vuelve a ser invitado,
     // el botón no aparezca falsamente como "📨 Enviada".
-    const inviteRefs=[doc(db,'clanInvites',`${clan.id}_${memberId}`),doc(db,'clanJoinRequests',`${clan.id}_invite_${memberId}`)]
-    for(const inviteRef of inviteRefs){const inviteSnap=await getDoc(inviteRef);if(inviteSnap.exists()&&inviteSnap.data().status==='pending')await deleteDoc(inviteRef)}
+    const inviteRef=doc(db,'clanInvites',`${clan.id}_${memberId}`)
+    const inviteSnap=await getDoc(inviteRef)
+    if(inviteSnap.exists() && inviteSnap.data().status==='pending') await deleteDoc(inviteRef)
     setClanMsg('❌ Miembro expulsado del clan.')
   }catch(error:any){console.error('Kick clan member error:',error);setClanMsg(`❌ No se pudo expulsar al miembro${error?.code?` (${error.code})`:''}.`)}
  }
@@ -1179,55 +1179,52 @@ useEffect(()=>{
   if(!admin||clan.members?.includes(friend.id)||friend.id===user.uid)return
   if(clanInvitingFriendId===friend.id)return
   setClanInvitingFriendId(friend.id)
-  const inviteId=`${clan.id}_${friend.id}`; const ref=doc(db,'clanInvites',inviteId)
+  const requestId=`${clan.id}_${friend.id}`; const ref=doc(db,'clanInvites',requestId)
   try{
-    const existing=await getDoc(ref)
-    if(existing.exists()){
-      const data=existing.data()
-      if(data.status==='pending'&&data.senderId===user.uid&&data.receiverId===friend.id){setClanMsg(`ℹ️ Ya hay una invitación pendiente para ${friend.name}.`);return}
+    const snap=await getDoc(ref)
+    if(snap.exists()){
+      const data=snap.data()
+      if(data.status==='pending'&&data.kind==='invite'&&data.requesterId===user.uid&&data.receiverId===friend.id){
+        setClanMsg(`ℹ️ Ya hay una invitación pendiente para ${friend.name}.`)
+        return
+      }
       await deleteDoc(ref)
     }
+    const invite:ClanInvite={id:requestId,clanId:clan.id,senderId:user.uid,senderName:user.displayName||'Jugador',receiverId:friend.id,clanName:clan.name,clanTag:clan.tag||'',kind:'invite',status:'pending',createdAt:serverTimestamp() as any}
     await setDoc(ref,{clanId:clan.id,senderId:user.uid,senderName:user.displayName||'Jugador',receiverId:friend.id,clanName:clan.name,clanTag:clan.tag||'',kind:'invite',status:'pending',createdAt:serverTimestamp()})
-    const push=await sendPushEvent(friend.id,'clan_invite',inviteId)
-    if(push?.ok===false)console.warn('Clan invite push unavailable:',push)
-    setClanInvitesSent(prev=>[...prev.filter(x=>x.id!==inviteId),{id:inviteId,clanId:clan.id,senderId:user.uid,senderName:user.displayName||'Jugador',receiverId:friend.id,clanName:clan.name,clanTag:clan.tag||'',kind:'invite',status:'pending'} as ClanInvite])
-    if(push?.ok===false){
-      const reason=String(push?.error||'push-unavailable')
-      setClanMsg(`📨 Invitación guardada para ${friend.name}. ⚠️ La notificación no pudo enviarse (${reason}).`)
-    }else{
-      setClanMsg(`📨 Invitación enviada a ${friend.name}.`)
-    }
-  }catch(error:any){console.error('Invite to clan error:',error);setClanMsg(`❌ No se pudo enviar la invitación${error?.code?` (${error.code})`:''}.`)}
-  finally{setClanInvitingFriendId(null)}
- }
- async function cancelClanInvite(clan:Clan, friendId:string){
-  if(!user)return
-  const admin=user.uid===clan.owner||clan.coLeader===user.uid
-  if(!admin)return
-  try{
-    const ref=doc(db,'clanInvites',`${clan.id}_${friendId}`); const snap=await getDoc(ref)
-    if(snap.exists()&&snap.data().senderId===user.uid&&snap.data().receiverId===friendId&&snap.data().status==='pending'){
-      await deleteDoc(ref); setClanInvitesSent(prev=>prev.filter(x=>x.id!==ref.id)); setClanMsg('↩️ Invitación cancelada.')
-    }
-  }catch(error:any){console.error('Cancel clan invite error:',error);setClanMsg(`❌ No se pudo cancelar la invitación${error?.code?` (${error.code})`:''}.`)}
+    void sendPushEvent(friend.id,'clan_invite',requestId)
+    setClanInvitesSent(prev=>[...prev.filter(x=>x.id!==requestId),invite])
+    setClanMsg(`📨 Invitación enviada a ${friend.name}.`)
+  }catch(error:any){
+    console.error('Invite to clan error:',error)
+    setClanMsg(`❌ No se pudo enviar la invitación${error?.code?` (${error.code})`:''}.`)
+  }finally{
+    setClanInvitingFriendId(null)
+  }
  }
  async function acceptClanInvite(r:ClanInvite){
   if(!user)return
   try{
-    const clanRef=doc(db,'clans',r.clanId); const inviteRef=doc(db,'clanInvites',r.id)
+    const clanRef=doc(db,'clans',r.clanId); const reqRef=doc(db,'clanInvites',r.id)
+    const clanSnap=await getDoc(clanRef)
+    if(!clanSnap.exists()){setClanMsg('⚠️ El clan ya no está disponible.');return}
+    const clan=clanSnap.data()
     if(myClanId&&myClanId!==r.clanId){setClanMsg('⚠️ Ya perteneces a otro clan.');return}
-    let acceptedClan:any=null
     await runTransaction(db,async tx=>{
-      const inviteSnap=await tx.get(inviteRef); const clanSnap=await tx.get(clanRef)
-      if(!inviteSnap.exists()||!clanSnap.exists())throw new Error('invite-missing')
-      const invite=inviteSnap.data(); const data=clanSnap.data(); const members=Array.isArray(data.members)?data.members:[]
-      if(invite.clanId!==r.clanId||invite.senderId===user.uid||invite.receiverId!==user.uid||invite.kind!=='invite'||invite.status!=='pending')throw new Error('invite-not-pending')
-      if(members.length>=1000&&!members.includes(user.uid))throw new Error('clan-full')
-      if(!members.includes(user.uid))tx.update(clanRef,{members:arrayUnion(user.uid)})
-      tx.update(inviteRef,{status:'accepted',reviewedAt:serverTimestamp()}); acceptedClan={...data,id:r.clanId}
+      const freshClan=await tx.get(clanRef); const reqSnap=await tx.get(reqRef)
+      if(!freshClan.exists()||!reqSnap.exists())throw new Error('invite-missing')
+      const data=freshClan.data(); const req=reqSnap.data()
+      if(req.receiverId!==user.uid||req.status!=='pending'||req.kind!=='invite')throw new Error('not-allowed')
+      const members=Array.isArray(data.members)?[...data.members]:[]
+      if(!members.includes(user.uid))members.push(user.uid)
+      tx.update(clanRef,{members}); tx.update(reqRef,{status:'accepted',reviewedAt:serverTimestamp()})
     })
-    setMyClanId(r.clanId); setSelectedClan(acceptedClan||selectedClan); setUnreadClanInvites(prev=>prev.filter(x=>x.id!==r.id)); localStorage.setItem(`auraClanInviteRead:${user.uid}:${r.id}`,'1'); setClanMsg(`✅ Te uniste a [${String(acceptedClan?.tag||r.clanTag||'CLAN')}] ${String(acceptedClan?.name||r.clanName||'Clan')}.`)
-  }catch(error:any){console.error('Accept clan invite error:',error);const code=error?.code||error?.message||'';setClanMsg(`❌ No se pudo aceptar la invitación${code?` (${code})`:''}.`)}
+    setUnreadClanInvites(prev=>prev.filter(x=>x.id!==r.id)); localStorage.setItem(`auraClanInviteRead:${user.uid}:${r.id}`,'1'); setClanMsg(`✅ Te uniste a [${String(clan.tag||r.clanTag||'CLAN')}] ${String(clan.name||r.clanName||'Clan')}.`)
+  }catch(error:any){console.error('Accept clan invite error:',error);setClanMsg(`❌ No se pudo aceptar la invitación${error?.code?` (${error.code})`:''}.`)}
+ }
+ async function cancelClanInvite(r:ClanInvite){
+  if(!user||r.senderId!==user.uid)return
+  try{await deleteDoc(doc(db,'clanInvites',r.id));setClanInvitesSent(prev=>prev.filter(x=>x.id!==r.id));setClanMsg(`❌ Invitación cancelada para ${r.receiverId===user.uid?'el jugador':(r.receiverId||'el jugador')}.`)}catch(error:any){console.error('Cancel clan invite error:',error);setClanMsg(`❌ No se pudo cancelar la invitación${error?.code?` (${error.code})`:''}.`)}
  }
  async function declineClanInvite(r:ClanInvite){
   if(!user)return
@@ -1246,7 +1243,7 @@ useEffect(()=>{
 
  if(!authReady)return <div className="auth-loading">⚡ AURA BATTLE<br/><small>Comprobando sesión…</small></div>
  if(!user)return <AuthScreen {...{authMode,setAuthMode,email,setEmail,password,setPassword,password2,setPassword2,name,setName,authMsg,setAuthMsg,handleAuth,resetPassword,resetSent,loginWithGoogle,lang,setLang,t,legalAccepted,setLegalAccepted,legalDoc,setLegalDoc}}/>
- return <div className={`app ${theme}`}><audio ref={battleMusicRef} src="/assets/audio/aura-battle-theme.wav" loop preload="auto" /><header className="topbar"><div className="brand">⚡ <span>Aura farming battles</span><b>V5.174.3</b></div><div className="top-actions"><span className="online-pill">● {online} {t.online}</span>{tab==='home'&&<div className="notification-wrap"><button type="button" className={`notification-btn${notificationOpen?' active':''}`} onClick={()=>setNotificationOpen(v=>!v)} aria-label="Notificaciones" title="Notificaciones">🔔{unreadFriendRequests.length+unreadPrivateMessages.length+battleInvites.length+unreadClanJoinRequests.length+unreadClanInvites.length>0&&<span className="notification-badge">{Math.min(99,unreadFriendRequests.length+unreadPrivateMessages.length+battleInvites.length+unreadClanJoinRequests.length+unreadClanInvites.length)}</span>}</button>{notificationOpen&&<div className="notification-panel"><div className="notification-title">🔔 Notificaciones</div>{battleInvites.length>0&&<div className="notification-messages"><div className="notification-subtitle">⚔️ Invitaciones de batalla</div>{battleInvites.slice(0,5).map(inv=><div className="notification-battle-invite" key={inv.id}><strong>{inv.senderName||'Jugador'} te invitó a una batalla</strong><div className="notification-battle-actions"><button type="button" className="primary" onClick={()=>void acceptBattleInvite(inv)}>⚔️ Aceptar</button><button type="button" onClick={()=>void declineBattleInvite(inv)}>Rechazar</button></div></div>)}</div>}{unreadFriendRequests.length>0&&<button type="button" className="notification-item" onClick={()=>{if(user)friendRequests.forEach(r=>localStorage.setItem(`auraFriendRequestRead:${user.uid}:${r.id}`,'1'));setUnreadFriendRequests([]);setNotificationOpen(false);navigateTab('friends')}}><strong>👥 {unreadFriendRequests.length} solicitud{unreadFriendRequests.length===1?'':'es'} de amistad</strong><small>Tienes nuevas solicitudes para revisar.</small></button>}{unreadPrivateMessages.length>0&&<div className="notification-messages"><div className="notification-subtitle">💬 Mensajes nuevos</div>{unreadPrivateMessages.slice(0,5).map(m=>{const f=friends.find(x=>x.id===m.uid);return <button type="button" className="notification-item" key={m.id} onClick={()=>f&&openPrivateChat(f)}><strong>{m.name||f?.name||'Jugador'}</strong><small>{m.text}</small></button>})}</div>}{unreadClanJoinRequests.length>0&&<div className="notification-messages"><div className="notification-subtitle">🛡️ Solicitudes de clan</div>{unreadClanJoinRequests.slice(0,5).map(r=><button type="button" className="notification-item clan-notification-item" key={r.id} onClick={()=>{localStorage.setItem(`auraClanJoinRead:${user.uid}:${r.id}`,'1');setUnreadClanJoinRequests(prev=>prev.filter(x=>x.id!==r.id));const c=clans.find(x=>x.id===r.clanId);if(c){setSelectedClan(c);setNotificationOpen(false);navigateTab('clans')}}}><strong>👥 {r.requesterName||'Jugador'} quiere unirse a tu clan</strong><small>{r.clanName||'Solicitud de ingreso'}</small></button>)}</div>}{unreadClanInvites.length>0&&<div className="notification-messages"><div className="notification-subtitle">📨 Invitaciones a clan</div>{unreadClanInvites.slice(0,5).map(r=><div className="notification-item clan-notification-item" key={r.id} onClick={()=>{localStorage.setItem(`auraClanInviteRead:${user.uid}:${r.id}`,'1')}}><strong>🛡️ {r.senderName||'Jugador'} te invitó a un clan</strong><small>{r.clanName||'Invitación de clan'}</small><div className="notification-battle-actions"><button type="button" className="primary" onClick={()=>void acceptClanInvite(r)}>Aceptar</button><button type="button" onClick={()=>void declineClanInvite(r)}>Rechazar</button></div></div>)}</div>}{unreadFriendRequests.length===0&&unreadPrivateMessages.length===0&&battleInvites.length===0&&unreadClanJoinRequests.length===0&&unreadClanInvites.length===0&&<div className="notification-empty">No tienes notificaciones nuevas.</div>}</div>}</div>}<select value={lang} onChange={e=>setLang(e.target.value as Lang)}><option value="es">ES</option><option value="en">EN</option><option value="pt">PT</option><option value="fr">FR</option><option value="de">DE</option><option value="it">IT</option><option value="tr">TR</option><option value="ja">JA</option><option value="ko">KO</option><option value="zh">中文</option></select><button onClick={logout}>{t.logout}</button></div></header>
+ return <div className={`app ${theme}`}><audio ref={battleMusicRef} src="/assets/audio/aura-battle-theme.wav" loop preload="auto" /><header className="topbar"><div className="brand">⚡ <span>Aura farming battles</span><b>V5.174.4</b></div><div className="top-actions"><span className="online-pill">● {online} {t.online}</span>{tab==='home'&&<div className="notification-wrap"><button type="button" className={`notification-btn${notificationOpen?' active':''}`} onClick={()=>setNotificationOpen(v=>!v)} aria-label="Notificaciones" title="Notificaciones">🔔{unreadFriendRequests.length+unreadPrivateMessages.length+battleInvites.length+unreadClanJoinRequests.length+unreadClanInvites.length>0&&<span className="notification-badge">{Math.min(99,unreadFriendRequests.length+unreadPrivateMessages.length+battleInvites.length+unreadClanJoinRequests.length+unreadClanInvites.length)}</span>}</button>{notificationOpen&&<div className="notification-panel"><div className="notification-title">🔔 Notificaciones</div>{battleInvites.length>0&&<div className="notification-messages"><div className="notification-subtitle">⚔️ Invitaciones de batalla</div>{battleInvites.slice(0,5).map(inv=><div className="notification-battle-invite" key={inv.id}><strong>{inv.senderName||'Jugador'} te invitó a una batalla</strong><div className="notification-battle-actions"><button type="button" className="primary" onClick={()=>void acceptBattleInvite(inv)}>⚔️ Aceptar</button><button type="button" onClick={()=>void declineBattleInvite(inv)}>Rechazar</button></div></div>)}</div>}{unreadFriendRequests.length>0&&<button type="button" className="notification-item" onClick={()=>{if(user)friendRequests.forEach(r=>localStorage.setItem(`auraFriendRequestRead:${user.uid}:${r.id}`,'1'));setUnreadFriendRequests([]);setNotificationOpen(false);navigateTab('friends')}}><strong>👥 {unreadFriendRequests.length} solicitud{unreadFriendRequests.length===1?'':'es'} de amistad</strong><small>Tienes nuevas solicitudes para revisar.</small></button>}{unreadPrivateMessages.length>0&&<div className="notification-messages"><div className="notification-subtitle">💬 Mensajes nuevos</div>{unreadPrivateMessages.slice(0,5).map(m=>{const f=friends.find(x=>x.id===m.uid);return <button type="button" className="notification-item" key={m.id} onClick={()=>f&&openPrivateChat(f)}><strong>{m.name||f?.name||'Jugador'}</strong><small>{m.text}</small></button>})}</div>}{unreadClanJoinRequests.length>0&&<div className="notification-messages"><div className="notification-subtitle">🛡️ Solicitudes de clan</div>{unreadClanJoinRequests.slice(0,5).map(r=><button type="button" className="notification-item clan-notification-item" key={r.id} onClick={()=>{localStorage.setItem(`auraClanJoinRead:${user.uid}:${r.id}`,'1');setUnreadClanJoinRequests(prev=>prev.filter(x=>x.id!==r.id));const c=clans.find(x=>x.id===r.clanId);if(c){setSelectedClan(c);setNotificationOpen(false);navigateTab('clans')}}}><strong>👥 {r.requesterName||'Jugador'} quiere unirse a tu clan</strong><small>{r.clanName||'Solicitud de ingreso'}</small></button>)}</div>}{unreadClanInvites.length>0&&<div className="notification-messages"><div className="notification-subtitle">📨 Invitaciones a clan</div>{unreadClanInvites.slice(0,5).map(r=><div className="notification-item clan-notification-item" key={r.id} onClick={()=>{localStorage.setItem(`auraClanInviteRead:${user.uid}:${r.id}`,'1')}}><strong>🛡️ {r.senderName||'Jugador'} te invitó a un clan</strong><small>{r.clanName||'Invitación de clan'}</small><div className="notification-battle-actions"><button type="button" className="primary" onClick={()=>void acceptClanInvite(r)}>Aceptar</button><button type="button" onClick={()=>void declineClanInvite(r)}>Rechazar</button></div></div>)}</div>}{unreadFriendRequests.length===0&&unreadPrivateMessages.length===0&&battleInvites.length===0&&unreadClanJoinRequests.length===0&&unreadClanInvites.length===0&&<div className="notification-empty">No tienes notificaciones nuevas.</div>}</div>}</div>}<select value={lang} onChange={e=>setLang(e.target.value as Lang)}><option value="es">ES</option><option value="en">EN</option><option value="pt">PT</option><option value="fr">FR</option><option value="de">DE</option><option value="it">IT</option><option value="tr">TR</option><option value="ja">JA</option><option value="ko">KO</option><option value="zh">中文</option></select><button onClick={logout}>{t.logout}</button></div></header>
  <div className="layout"><aside className="sidebar"><div className="mini-profile"><div className="profile-icon">⚡</div><div><strong>{user.displayName||'Jugador'}</strong><small>⚡ {profile.aura} Aura · Lv.{profile.level}</small></div></div>{nav.map(n=><button key={n} className={tab===n?'nav active':'nav'} onClick={()=>navigateTab(n)}>{icon(n)} {t[n]}</button>)}<div className="ad-slot side-ad">PUBLICIDAD<br/><small>Espacio para marcas</small></div></aside>
  <main className="content">
  {tab==='home'&&<section className="home-hero"><div className="hero-copy"><div className="eyebrow">⚡ ONLINE AURA ARENA</div><h1>{t.welcome}</h1><p>Compite en vivo, gana Aura y construye tu reputación.</p><div className="hero-actions"><button className="primary" onClick={()=>navigateTab('battle')}>⚔️ {t.play}</button><button onClick={()=>navigateTab('profile')}>👤 Mi perfil</button></div><div className="quick-stats"><Stat label="⚡ Tu Aura" value={profile.aura}/><Stat label="🏆 Victorias" value={profile.wins}/><Stat label="🔥 Nivel" value={profile.level}/></div></div><div className="hero-art"><img src="/assets/aura-arena-home.png" alt="AURA BATTLE Arena"/><div className="hero-glow">LIVE</div></div><div className="home-grid"><Card icon="⚔️" title="Batallas 1v1" text="Crea una sala y reta a otra persona con cámara." action={()=>navigateTab('battle')}/><Card icon="🤖" title="IA Aura" text="Convierte señales visuales de tu cámara en una métrica de Aura." action={()=>navigateTab('ai')}/><Card icon="🏆" title="Ranking global" text="Sube posiciones con tus victorias y puntuación." action={()=>navigateTab('ranking')}/><Card icon="🛡️" title="Clanes" text="Forma equipos y crea una comunidad alrededor de tu Aura." action={()=>navigateTab('clans')}/></div><div className="ad-slot banner-ad">ESPACIO PUBLICITARIO · AURA BATTLE</div></section>}
@@ -1334,7 +1331,7 @@ useEffect(()=>{
          {friends.filter(f=>!selectedClan.members?.includes(f.id)).length ? friends.filter(f=>!selectedClan.members?.includes(f.id)).map(f=>{
            const sent=clanInvitesSent.some(r=>r.clanId===selectedClan.id&&r.receiverId===f.id&&r.status==='pending');
            const sending=clanInvitingFriendId===f.id;
-           return <div className="clan-invite-row" key={f.id}><span>👤 {f.name}</span>{sent?<button type="button" className="clan-invite-sent" disabled={sending} onClick={()=>void cancelClanInvite(selectedClan,f.id)}>{sending?'⏳ Procesando…':'↩️ Cancelar'}</button>:<button type="button" disabled={sending} onClick={()=>void inviteFriendToClan(selectedClan,f)}>{sending?'⏳ Enviando…':'➕ Invitar'}</button>}</div>;
+           return <div className="clan-invite-row" key={f.id}><span>👤 {f.name}</span><button type="button" className={sent?'clan-invite-sent':''} disabled={sending} onClick={()=>sent?void cancelClanInvite(clanInvitesSent.find(x=>x.clanId===selectedClan.id&&x.receiverId===f.id&&x.status==='pending')!):void inviteFriendToClan(selectedClan,f)}>{sending?'⏳ Enviando…':sent?'✕ Cancelar':'➕ Invitar'}</button></div>;
          }) : <small>No tienes amigos disponibles para invitar.</small>}
        </div>}
 
@@ -1381,7 +1378,7 @@ function AuthScreen(p:any){
   return (
     <div className="auth-shell">
       <div className="auth-brand">
-        <div className="brand">⚡ <span>Aura farming battles</span><b>V5.174.3</b></div>
+        <div className="brand">⚡ <span>Aura farming battles</span><b>V5.174.4</b></div>
         <p>La arena donde tu Aura habla por ti.</p>
       </div>
 
