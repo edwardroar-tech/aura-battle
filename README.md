@@ -24,9 +24,17 @@ Cámaras verticales lado a lado, medidor de Aura bajo cada cámara y cuenta regr
 Batallas de cámara con dos feeds verticales lado a lado, medidores de Aura en vivo y cuenta regresiva de 5 segundos antes de los 15 segundos de combate.
 
 
-## v5.176.5 — Rivales y granjeros ficticios
+## v5.176.8 — Rivales y granjeros ficticios
 - 25 rivales ficticios integrados como oponentes de práctica, separados de los usuarios reales y del contador de jugadores online.
 - Buscador de rivales con búsqueda de jugadores reales y acceso rápido a los bots.
 - Batallas contra bots con cuenta regresiva de 5 segundos, ronda de 15 segundos, dificultad y Aura simulada.
 - Los resultados contra bots actualizan victorias, derrotas, empates, batallas, racha, nivel y Aura del perfil.
 - Se conserva el sistema de salas/cámaras para batallas entre personas.
+
+
+## v5.176.8
+- Cámaras de batalla en tarjetas 9:16 tipo videollamada móvil.
+- Sin giro automático de la señal; se respeta la orientación real del stream.
+- `object-fit: cover` para llenar el cuadro sin franjas negras.
+- Batallas contra bots sin dependencia de WebRTC/socket para iniciar.
+- Botón LISTO y controles de batalla con el mismo estilo premium del menú.

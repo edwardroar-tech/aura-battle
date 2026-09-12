@@ -890,7 +890,7 @@ body{min-height:100%;}
 .bot-camera-placeholder{height:100%;min-height:180px;display:grid;place-items:center;align-content:center;gap:7px;background:radial-gradient(circle at center,rgba(118,92,255,.16),transparent 58%),#070a16;color:#fff;text-align:center}.bot-camera-placeholder span{font-size:58px}.bot-camera-placeholder strong{font-size:18px}.bot-camera-placeholder small{color:#9da5bf}.bot-camera-placeholder b{font-size:15px;color:#bdb6ff}
 @media(max-width:700px){.bot-grid{grid-template-columns:1fr}.rival-search-row{flex-direction:column}.rival-search-row button{width:100%}.bot-rival-card{grid-template-columns:auto 1fr}.bot-rival-card button{grid-column:1/-1;width:100%}.real-rival-row{align-items:flex-start;flex-direction:column}.real-rival-row button{width:100%}}
 
-/* v5.176.5 — batalla vs bots: cámaras verticales completas + controles premium */
+/* v5.176.6 — batalla vs bots: cámaras verticales completas + controles premium */
 .video-grid{align-items:start!important}
 .video-card{background:linear-gradient(145deg,rgba(12,16,33,.98),rgba(7,10,22,.98));border:1px solid rgba(118,92,255,.28)!important;border-radius:20px!important;box-shadow:0 12px 30px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.04)}
 .video-card h3{padding:2px 2px 0;font-size:14px!important}
@@ -910,6 +910,86 @@ body{min-height:100%;}
   .video-card h3{font-size:11px!important;margin-bottom:6px!important}
   .bot-badge{font-size:7px!important;padding:3px 5px}
   .vertical-camera-frame{border-radius:13px}
+  .battle-actions{grid-template-columns:1fr 1fr!important;gap:8px!important}
+  .battle-actions button{min-height:50px!important;padding:10px 8px!important;font-size:11px!important}
+  .battle-actions button.primary{min-height:58px!important;font-size:13px!important}
+}
+
+/* v5.176.8 — cámaras tipo videollamada móvil: 9:16 real, sin giro forzado. */
+.vertical-camera-frame{
+  width:100%!important;
+  aspect-ratio:9/16!important;
+  height:auto!important;
+  min-height:0!important;
+  overflow:hidden!important;
+  position:relative!important;
+  background:#050713!important;
+  border-radius:16px!important;
+}
+.vertical-camera-frame video{
+  width:100%!important;
+  height:100%!important;
+  display:block!important;
+  object-fit:cover!important;
+  object-position:50% 50%!important;
+  background:transparent!important;
+  transform:scaleX(-1)!important;
+  transform-origin:center center!important;
+}
+/* No giramos automáticamente la señal. La orientación real del stream la
+   decide el navegador/dispositivo y el cuadro 9:16 la presenta como una
+   videollamada móvil: llena todo el panel y recorta solo lo necesario. */
+.vertical-camera-frame video.camera-rotated{
+  width:100%!important;
+  height:100%!important;
+  max-width:none!important;
+  max-height:none!important;
+  object-fit:cover!important;
+  object-position:50% 50%!important;
+  transform:scaleX(-1)!important;
+}
+.video-grid{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:10px!important;
+  align-items:start!important;
+}
+.video-card{
+  width:100%!important;
+  padding:8px!important;
+  border-radius:18px!important;
+  background:linear-gradient(145deg,rgba(12,16,33,.98),rgba(7,10,22,.98))!important;
+  border:1px solid rgba(118,92,255,.32)!important;
+  box-shadow:0 12px 30px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.04)!important;
+}
+.video-card h3{font-size:12px!important;margin:0 0 7px!important}
+.battle-actions{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important;margin-top:12px!important}
+.battle-actions button{
+  min-height:50px!important;
+  border-radius:16px!important;
+  font-size:12px!important;
+  font-weight:800!important;
+  border:1px solid rgba(126,111,255,.38)!important;
+  background:linear-gradient(145deg,rgba(29,34,61,.98),rgba(13,17,34,.98))!important;
+  color:#f5f6ff!important;
+  box-shadow:0 8px 22px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.05)!important;
+}
+.battle-actions button:hover:not(:disabled){border-color:rgba(143,126,255,.72)!important;transform:translateY(-2px)}
+.battle-actions button:active:not(:disabled){transform:translateY(0) scale(.985)}
+.battle-actions button.primary{
+  grid-column:1/-1!important;
+  min-height:58px!important;
+  font-size:14px!important;
+  border-color:rgba(139,108,255,.72)!important;
+  background:linear-gradient(135deg,#5b4cff 0%,#8a42ff 52%,#bd39f5 100%)!important;
+  box-shadow:0 10px 28px rgba(102,67,255,.34),inset 0 1px 0 rgba(255,255,255,.16)!important;
+}
+.battle-actions button:last-child:not(.primary){grid-column:1/-1!important}
+.room-card .status{border-radius:14px;padding:11px 13px;background:rgba(118,92,255,.07);border:1px solid rgba(118,92,255,.14)}
+@media(max-width:700px){
+  .video-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
+  .video-card{padding:7px!important;border-radius:16px!important}
+  .video-card h3{font-size:11px!important;margin-bottom:6px!important}
+  .vertical-camera-frame{border-radius:13px!important}
   .battle-actions{grid-template-columns:1fr 1fr!important;gap:8px!important}
   .battle-actions button{min-height:50px!important;padding:10px 8px!important;font-size:11px!important}
   .battle-actions button.primary{min-height:58px!important;font-size:13px!important}
