@@ -22,3 +22,11 @@ Cámaras verticales lado a lado, medidor de Aura bajo cada cámara y cuenta regr
 
 ## v5.174.3-render-fix2 — Fase 5
 Batallas de cámara con dos feeds verticales lado a lado, medidores de Aura en vivo y cuenta regresiva de 5 segundos antes de los 15 segundos de combate.
+
+
+## v5.176.4 — Rivales y granjeros ficticios
+- 25 rivales ficticios integrados como oponentes de práctica, separados de los usuarios reales y del contador de jugadores online.
+- Buscador de rivales con búsqueda de jugadores reales y acceso rápido a los bots.
+- Batallas contra bots con cuenta regresiva de 5 segundos, ronda de 15 segundos, dificultad y Aura simulada.
+- Los resultados contra bots actualizan victorias, derrotas, empates, batallas, racha, nivel y Aura del perfil.
+- Se conserva el sistema de salas/cámaras para batallas entre personas.
